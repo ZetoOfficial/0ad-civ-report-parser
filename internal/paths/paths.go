@@ -1,23 +1,12 @@
 package paths
 
 import (
-	"os"
 	"path/filepath"
 )
 
 const DefaultGameDataRoot = "/Users/zeto/Projects/study/0ad/binaries/data/mods/public"
 
 const EnvGameDataRoot = "OAD_GAMEDATA_ROOT"
-
-func ResolveRoot(flag string) string {
-	if flag != "" {
-		return flag
-	}
-	if env := os.Getenv(EnvGameDataRoot); env != "" {
-		return env
-	}
-	return DefaultGameDataRoot
-}
 
 type Layout struct {
 	Root string

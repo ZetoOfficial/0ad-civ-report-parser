@@ -48,11 +48,14 @@ func main() {
 	if err != nil {
 		fail("config: %v", err)
 	}
-	// CLI overlays config: only flags actually present override.
+	// Precedence: CLI flag > JSON config > env var > built-in default.
+	// Env var only applies when neither --gamedata nor --config is given.
 	if gamedataFlag != "" {
 		cfg.Gamedata = gamedataFlag
-	} else if env := os.Getenv(paths.EnvGameDataRoot); env != "" {
-		cfg.Gamedata = env
+	} else if configFlag == "" {
+		if env := os.Getenv(paths.EnvGameDataRoot); env != "" {
+			cfg.Gamedata = env
+		}
 	}
 	if outDirFlag != "" {
 		cfg.OutDir = outDirFlag
