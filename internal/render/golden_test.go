@@ -21,17 +21,17 @@ func TestGoldenGermSmoke(t *testing.T) {
 	if !ok {
 		t.Fatalf("germ resolution failed")
 	}
-	body, err := g.Generate(info)
+	out, err := g.Generate(info)
 	if err != nil {
 		t.Fatalf("generate germ: %v", err)
 	}
+	body := out.Overview + "\n" + out.Structree
 	lines := strings.Count(body, "\n") + 1
 	if lines < 700 {
 		t.Errorf("germ report too short: %d lines (want ≥ 700)", lines)
 	}
 
 	must := []string{
-		"# Germans (Germ)",
 		"## VILLAGE PHASE",
 		"## TOWN PHASE",
 		"## CITY PHASE",

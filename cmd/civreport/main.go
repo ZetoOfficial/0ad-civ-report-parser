@@ -70,51 +70,54 @@ func runOne(gen *render.Generator, input, outFlag string) {
 	if !ok {
 		fail("could not resolve civilization %q. Try one of: athen, spart, germ, ...", input)
 	}
-	body, err := gen.Generate(info)
+	out, err := gen.Generate(info)
 	if err != nil {
 		fail("generate %s: %v", info.Code, err)
 	}
-	out := outFlag
-	if out == "" {
-		out = info.OutputFile
+	body := out.Overview + "\n" + out.Structree
+	outPath := outFlag
+	if outPath == "" {
+		outPath = info.OutputFile
 	}
-	if err := os.WriteFile(out, []byte(body), 0o600); err != nil {
-		fail("write %s: %v", out, err)
+	if err := os.WriteFile(outPath, []byte(body), 0o600); err != nil {
+		fail("write %s: %v", outPath, err)
 	}
-	abs, _ := filepath.Abs(out)
+	abs, _ := filepath.Abs(outPath)
 	lines := strings.Count(body, "\n") + 1
 	fmt.Printf("OK %s → %s (%d lines)\n", info.Code, abs, lines)
 }
 
 func runAll(gen *render.Generator, outFlag string) {
 	for _, civInfo := range civdata.Civilizations {
-		body, err := gen.Generate(civInfo)
+		out, err := gen.Generate(civInfo)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", civInfo.Code, err)
 			continue
 		}
-		out := civInfo.OutputFile
+		body := out.Overview + "\n" + out.Structree
+		outPath := civInfo.OutputFile
 		if outFlag != "" {
-			out = filepath.Join(outFlag, civInfo.OutputFile)
+			outPath = filepath.Join(outFlag, civInfo.OutputFile)
 		}
-		if err := os.WriteFile(out, []byte(body), 0o600); err != nil {
+		if err := os.WriteFile(outPath, []byte(body), 0o600); err != nil {
 			fmt.Fprintf(os.Stderr, "WRITE %s: %v\n", civInfo.Code, err)
 			continue
 		}
 		lines := strings.Count(body, "\n") + 1
-		fmt.Printf("OK %s → %s (%d lines)\n", civInfo.Code, out, lines)
+		fmt.Printf("OK %s → %s (%d lines)\n", civInfo.Code, outPath, lines)
 	}
 }
 
 func runCheck(gen *render.Generator) {
 	failed := 0
 	for _, civInfo := range civdata.Civilizations {
-		body, err := gen.Generate(civInfo)
+		out, err := gen.Generate(civInfo)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", civInfo.Code, err)
 			failed++
 			continue
 		}
+		body := out.Overview + "\n" + out.Structree
 		lines := strings.Count(body, "\n") + 1
 		ok := lines >= 100
 		mark := "OK"
