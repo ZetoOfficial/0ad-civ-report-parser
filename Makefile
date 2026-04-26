@@ -50,6 +50,7 @@ civ: build
 check: build
 	$(BIN) $(GAMEDATA_FLAG) $(CONFIG_FLAG) --check
 
+# Informational only — does not fail the build. Strict diff lands in Epic 4.
 golden-diff: build
 	@if [ -z "$(CIV)" ]; then echo "usage: make golden-diff CIV=<civcode>"; exit 1; fi
 	@tmp=$$(mktemp -d) && \

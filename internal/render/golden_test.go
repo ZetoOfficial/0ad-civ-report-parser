@@ -27,6 +27,9 @@ func TestGoldenGermStructure(t *testing.T) {
 		t.Fatalf("generate germ: %v", err)
 	}
 
+	// TODO(epic-2): raise to >= 30 (spec value) once Identity / CivSpecific
+	// / Heroes-overview blocks are populated. Current germ overview body is
+	// 29 lines; threshold loosened to 25 as a documented Epic 1 deviation.
 	overviewLines := strings.Count(out.Overview, "\n") + 1
 	if overviewLines < 25 {
 		t.Errorf("overview too short: %d lines (want >= 25)", overviewLines)
@@ -69,6 +72,9 @@ func TestGoldenGermStructure(t *testing.T) {
 		t.Errorf("common body should mention TODO placeholder in epic 1")
 	}
 
+	// Optional reference goldens at testdata/golden/germans_*.md.
+	// In Epic 1 we only verify they're readable when present; Epic 4
+	// will replace this with a strict byte-diff against Generate output.
 	wd, _ := os.Getwd()
 	for _, f := range []string{"germans_overview.md", "germans_structree.md"} {
 		path := filepath.Join(wd, "..", "..", "testdata", "golden", f)
