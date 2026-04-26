@@ -722,9 +722,11 @@ Markdown-ссылки на спрайты (`![alt](Identity/Icon path)`) вкл�
 ### Сквозные следствия
 
 - **Конфигурация.** Появляется `internal/config/config.go` со
-  struct'ом всех опций и `config.yaml` рядом с бинарником, плюс
+  struct'ом всех опций и `config.json` рядом с бинарником, плюс
   CLI-флаги (`--lang`, `--include-history`, `--include-icons`,
-  `--config <path>`). CLI перекрывает YAML, YAML — встроенные дефолты.
+  `--config <path>`). CLI перекрывает JSON, JSON — встроенные дефолты.
+  Формат конфига: JSON (stdlib-only зависимости в проекте). См.
+  `docs/superpowers/specs/2026-04-26-epic-1-foundation-design.md`.
 - **Имена выходных файлов.** Меняются: вместо
   `<civ>_buildings_report.md` — пара
   `<civ>_overview.md` + `<civ>_structree.md`. Поле `OutputFile` в

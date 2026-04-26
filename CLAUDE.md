@@ -118,15 +118,16 @@ internal/render/                   рендер markdown (структура з�
   ├── units.go                     приложение по юнитам, ауры героев/катафалка
   └── summary.go                   сводная таблица в конце
 testdata/golden/                   эталоны для smoke-тестов
-  └── germans_buildings_report.md  копия рукописного отчёта по germ
+  ├── germans_overview.md          эталон обзорного отчёта по germ (untracked)
+  └── germans_structree.md         эталон структурного отчёта по germ (untracked)
 ```
 
 ### Целевая структура (после внедрения решений из `docs/analysis.md`)
 
 ```
 cmd/civreport/main.go              CLI с расширенными флагами (см. ниже)
-config.yaml                        дефолты конфигурации (рядом с бинарником)
-internal/config/config.go          struct Config + загрузка из YAML и CLI
+config.json                        дефолты конфигурации (рядом с бинарником)
+internal/config/config.go          struct Config + загрузка из JSON и CLI
 internal/paths/                    без изменений
 internal/tmpl/                     без изменений
 internal/civdata/
@@ -234,8 +235,8 @@ make spart GAMEDATA=/path/to/0ad/binaries/data/mods/public
 OAD_GAMEDATA_ROOT=/path ./bin/civreport spart
 ./bin/civreport --gamedata /path spart
 
-# Конфигурация (перекрывает дефолты из config.yaml)
-./bin/civreport --config ./my-config.yaml spart
+# Конфигурация (перекрывает дефолты из config.json)
+./bin/civreport --config ./my-config.json spart
 ./bin/civreport --lang ru spart                      # gettext-перевод
 ./bin/civreport --include-history spart              # история цивы в overview
 ./bin/civreport --include-icons spart                # иконки в structree
@@ -248,15 +249,16 @@ go test ./...
 make clean                          # удаляет *_overview.md, *_structree.md, common.md, bin/
 ```
 
-### Опции в `config.yaml`
+### Опции в `config.json`
 
-Все имеют CLI-эквиваленты. CLI перекрывает YAML, YAML — встроенные дефолты.
+Все имеют CLI-эквиваленты. CLI перекрывает JSON, JSON — встроенные дефолты.
 
-```yaml
-# дефолты, действующие если файл config.yaml не предоставлен
-gamedata: /Users/zeto/Projects/study/0ad/binaries/data/mods/public
-lang: ""                  # "" = без перевода; "ru", "fr", "de" если есть .po
-include_history: false    # включить Identity/History в overview
-include_icons: false      # вставлять ![alt](path) в structree
-out_dir: "."              # куда писать файлы
+```json
+{
+  "gamedata": "/Users/zeto/Projects/study/0ad/binaries/data/mods/public",
+  "lang": "",
+  "include_history": false,
+  "include_icons": false,
+  "out_dir": "."
+}
 ```
