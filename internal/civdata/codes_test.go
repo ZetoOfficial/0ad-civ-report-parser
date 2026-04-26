@@ -29,3 +29,27 @@ func TestResolveCivInput(t *testing.T) {
 		}
 	}
 }
+
+func TestCivCode_FileNames(t *testing.T) {
+	c, ok := ResolveCivInput("germ")
+	if !ok {
+		t.Fatal("germ not resolved")
+	}
+	if c.BaseName != "germans" {
+		t.Errorf("BaseName = %q; want %q", c.BaseName, "germans")
+	}
+	if got := c.OverviewFile(); got != "germans_overview.md" {
+		t.Errorf("OverviewFile() = %q", got)
+	}
+	if got := c.StructreeFile(); got != "germans_structree.md" {
+		t.Errorf("StructreeFile() = %q", got)
+	}
+}
+
+func TestCivCode_AllHaveBaseName(t *testing.T) {
+	for _, c := range Civilizations {
+		if c.BaseName == "" {
+			t.Errorf("civ %q: BaseName empty", c.Code)
+		}
+	}
+}

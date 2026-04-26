@@ -6,66 +6,98 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/civdata"
+	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/config"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/paths"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/render"
+	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/render/skeleton"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/tmpl"
 )
 
 func main() {
 	var (
-		gamedataFlag string
-		outFlag      string
-		all          bool
-		check        bool
+		gamedataFlag  string
+		outDirFlag    string
+		configFlag    string
+		printBaseName bool
+		all           bool
+		check         bool
 	)
-	flag.StringVar(&gamedataFlag, "gamedata", "", "path to 0 A.D. mods/public root (overrides OAD_GAMEDATA_ROOT)")
-	flag.StringVar(&outFlag, "out", "", "output file (default: <civ>_buildings_report.md in CWD)")
+	flag.StringVar(&gamedataFlag, "gamedata", "", "path to 0 A.D. mods/public root (overrides OAD_GAMEDATA_ROOT and config)")
+	flag.StringVar(&outDirFlag, "out-dir", "", "output directory for generated files (default: from config or '.')")
+	flag.StringVar(&configFlag, "config", "", "path to JSON config file")
+	flag.BoolVar(&printBaseName, "print-basename", false, "print BaseName for the given civ and exit (used by Makefile)")
 	flag.BoolVar(&all, "all", false, "generate reports for all 15 civilizations")
 	flag.BoolVar(&check, "check", false, "smoke-check: parse all civs without writing files")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: civreport [flags] <civ>\n\n")
-		fmt.Fprintf(os.Stderr, "Generate a Russian-language buildings/units/technologies report\n")
+		fmt.Fprintf(os.Stderr, "Generate Russian-language overview + structure-tree reports\n")
 		fmt.Fprintf(os.Stderr, "for one or more 0 A.D. civilizations.\n\n")
-		fmt.Fprintf(os.Stderr, "Civilization codes: athen, brit, cart, gaul, germ, han, iber, kush,\n")
-		fmt.Fprintf(os.Stderr, "                    mace, maur, pers, ptol, rome, sele, spart\n")
+		fmt.Fprintf(os.Stderr, "Output: <civ>_overview.md, <civ>_structree.md, common.md.\n\n")
+		fmt.Fprintf(os.Stderr, "Civ codes: athen, brit, cart, gaul, germ, han, iber, kush,\n")
+		fmt.Fprintf(os.Stderr, "           mace, maur, pers, ptol, rome, sele, spart\n")
 		fmt.Fprintf(os.Stderr, "Russian aliases also supported (спарт, афин, германцы, ...)\n\n")
 		fmt.Fprintf(os.Stderr, "Flags:\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 
-	root := paths.ResolveRoot(gamedataFlag)
-	layout := paths.Layout{Root: root}
-	if _, err := os.Stat(layout.Templates()); err != nil {
-		fail("gamedata templates not found at %s (use --gamedata or set %s): %v",
-			layout.Templates(), paths.EnvGameDataRoot, err)
+	cfg, err := config.Load(configFlag)
+	if err != nil {
+		fail("config: %v", err)
+	}
+	// CLI overlays config: only flags actually present override.
+	if gamedataFlag != "" {
+		cfg.Gamedata = gamedataFlag
+	} else if env := os.Getenv(paths.EnvGameDataRoot); env != "" {
+		cfg.Gamedata = env
+	}
+	if outDirFlag != "" {
+		cfg.OutDir = outDirFlag
 	}
 
-	idx, err := tmpl.NewIndex(layout.Templates())
+	if printBaseName {
+		args := flag.Args()
+		if len(args) != 1 {
+			fail("--print-basename requires exactly one civ argument")
+		}
+		info, ok := civdata.ResolveCivInput(args[0])
+		if !ok {
+			fail("could not resolve civilization %q", args[0])
+		}
+		fmt.Println(info.BaseName)
+		return
+	}
+
+	if _, err := os.Stat(filepath.Join(cfg.Gamedata, "simulation", "templates")); err != nil {
+		fail("gamedata templates not found at %s/simulation/templates: %v", cfg.Gamedata, err)
+	}
+
+	idx, err := tmpl.NewIndex(filepath.Join(cfg.Gamedata, "simulation", "templates"))
 	if err != nil {
 		fail("template index: %v", err)
 	}
 	resolver := tmpl.NewResolver(idx)
-	gen := render.NewGenerator(layout, resolver)
+	gen := render.NewGenerator(paths.Layout{Root: cfg.Gamedata}, resolver)
 
 	switch {
 	case check:
-		runCheck(gen)
+		runCheck(gen, cfg)
 	case all:
-		runAll(gen, outFlag)
+		runAll(gen, cfg)
 	default:
 		args := flag.Args()
 		if len(args) != 1 {
 			flag.Usage()
 			os.Exit(2)
 		}
-		runOne(gen, args[0], outFlag)
+		runOne(gen, cfg, args[0])
 	}
 }
 
-func runOne(gen *render.Generator, input, outFlag string) {
+func runOne(gen *render.Generator, cfg *config.Config, input string) {
 	info, ok := civdata.ResolveCivInput(input)
 	if !ok {
 		fail("could not resolve civilization %q. Try one of: athen, spart, germ, ...", input)
@@ -74,63 +106,126 @@ func runOne(gen *render.Generator, input, outFlag string) {
 	if err != nil {
 		fail("generate %s: %v", info.Code, err)
 	}
-	// TODO(epic1-task4): replaced by skeleton-wrapped two-file write.
-	body := out.Overview + "\n" + out.Structree
-	outPath := outFlag
-	if outPath == "" {
-		outPath = info.OutputFile
+	if err := writeCivFiles(cfg, info, out); err != nil {
+		fail("write %s: %v", info.Code, err)
 	}
-	if err := os.WriteFile(outPath, []byte(body), 0o600); err != nil {
-		fail("write %s: %v", outPath, err)
+	if err := writeCommon(cfg, gen); err != nil {
+		fail("write common.md: %v", err)
 	}
-	abs, _ := filepath.Abs(outPath)
-	lines := strings.Count(body, "\n") + 1
-	fmt.Printf("OK %s → %s (%d lines)\n", info.Code, abs, lines)
+	abs, _ := filepath.Abs(cfg.OutDir)
+	fmt.Printf("OK %s → %s/{%s,%s} + common.md\n", info.Code, abs, info.OverviewFile(), info.StructreeFile())
 }
 
-func runAll(gen *render.Generator, outFlag string) {
-	for _, civInfo := range civdata.Civilizations {
-		out, err := gen.Generate(civInfo)
+func runAll(gen *render.Generator, cfg *config.Config) {
+	for _, info := range civdata.Civilizations {
+		out, err := gen.Generate(info)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", civInfo.Code, err)
+			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", info.Code, err)
 			continue
 		}
-		body := out.Overview + "\n" + out.Structree
-		outPath := civInfo.OutputFile
-		if outFlag != "" {
-			outPath = filepath.Join(outFlag, civInfo.OutputFile)
-		}
-		if err := os.WriteFile(outPath, []byte(body), 0o600); err != nil {
-			fmt.Fprintf(os.Stderr, "WRITE %s: %v\n", civInfo.Code, err)
+		if err := writeCivFiles(cfg, info, out); err != nil {
+			fmt.Fprintf(os.Stderr, "WRITE %s: %v\n", info.Code, err)
 			continue
 		}
-		lines := strings.Count(body, "\n") + 1
-		fmt.Printf("OK %s → %s (%d lines)\n", civInfo.Code, outPath, lines)
+		fmt.Printf("OK %s → %s, %s\n", info.Code, info.OverviewFile(), info.StructreeFile())
+	}
+	if err := writeCommon(cfg, gen); err != nil {
+		fmt.Fprintf(os.Stderr, "WRITE common.md: %v\n", err)
+	} else {
+		fmt.Println("OK common.md")
 	}
 }
 
-func runCheck(gen *render.Generator) {
+func runCheck(gen *render.Generator, cfg *config.Config) {
 	failed := 0
-	for _, civInfo := range civdata.Civilizations {
-		out, err := gen.Generate(civInfo)
+	for _, info := range civdata.Civilizations {
+		out, err := gen.Generate(info)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", civInfo.Code, err)
+			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", info.Code, err)
 			failed++
 			continue
 		}
-		body := out.Overview + "\n" + out.Structree
-		lines := strings.Count(body, "\n") + 1
-		ok := lines >= 100
+		ovLines := strings.Count(out.Overview, "\n") + 1
+		stLines := strings.Count(out.Structree, "\n") + 1
 		mark := "OK"
-		if !ok {
+		if ovLines < 30 || stLines < 100 {
 			mark = "WARN"
 			failed++
 		}
-		fmt.Printf("%s %s (%d lines)\n", mark, civInfo.Code, lines)
+		fmt.Printf("%s %s (overview=%d, structree=%d)\n", mark, info.Code, ovLines, stLines)
 	}
+	if _, err := gen.RenderCommon(); err != nil {
+		fmt.Fprintf(os.Stderr, "FAIL common: %v\n", err)
+		failed++
+	}
+	_ = cfg
 	if failed > 0 {
 		os.Exit(1)
 	}
+}
+
+func writeCivFiles(cfg *config.Config, info civdata.CivCode, out render.Output) error {
+	if err := ensureOutDir(cfg); err != nil {
+		return err
+	}
+	date := time.Now().Format("2006-01-02") // Go reference layout = YYYY-MM-DD
+	codeUpper := strings.ToUpper(info.Code[:1]) + info.Code[1:]
+	overview, err := skeleton.Render("overview", skeleton.Data{
+		CivName:        info.NameEN,
+		CivCodeUpper:   codeUpper,
+		Date:           date,
+		Lang:           cfg.Lang,
+		IncludeHistory: cfg.IncludeHistory,
+		IncludeIcons:   cfg.IncludeIcons,
+		Body:           out.Overview,
+	})
+	if err != nil {
+		return fmt.Errorf("render overview skeleton: %w", err)
+	}
+	structree, err := skeleton.Render("structree", skeleton.Data{
+		CivName:        info.NameEN,
+		CivCodeUpper:   codeUpper,
+		Date:           date,
+		Lang:           cfg.Lang,
+		IncludeHistory: cfg.IncludeHistory,
+		IncludeIcons:   cfg.IncludeIcons,
+		Body:           out.Structree,
+	})
+	if err != nil {
+		return fmt.Errorf("render structree skeleton: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg.OutDir, info.OverviewFile()), []byte(overview), 0o600); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(cfg.OutDir, info.StructreeFile()), []byte(structree), 0o600); err != nil {
+		return err
+	}
+	return nil
+}
+
+func writeCommon(cfg *config.Config, gen *render.Generator) error {
+	if err := ensureOutDir(cfg); err != nil {
+		return err
+	}
+	body, err := gen.RenderCommon()
+	if err != nil {
+		return err
+	}
+	wrapped, err := skeleton.Render("common", skeleton.Data{
+		Date: time.Now().Format("2006-01-02"),
+		Body: body,
+	})
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(cfg.OutDir, "common.md"), []byte(wrapped), 0o600)
+}
+
+func ensureOutDir(cfg *config.Config) error {
+	if cfg.OutDir == "" {
+		cfg.OutDir = "."
+	}
+	return os.MkdirAll(cfg.OutDir, 0o755)
 }
 
 func fail(format string, args ...any) {

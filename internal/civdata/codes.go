@@ -3,29 +3,32 @@ package civdata
 import "strings"
 
 type CivCode struct {
-	Code       string
-	NameEN     string
-	NameRU     string
-	OutputFile string
-	Aliases    []string
+	Code     string
+	NameEN   string
+	NameRU   string
+	BaseName string
+	Aliases  []string
 }
 
+func (c CivCode) OverviewFile() string  { return c.BaseName + "_overview.md" }
+func (c CivCode) StructreeFile() string { return c.BaseName + "_structree.md" }
+
 var Civilizations = []CivCode{
-	{"athen", "Athenians", "Афиняне", "athenians_buildings_report.md", []string{"афин", "athens"}},
-	{"brit", "Britons", "Бритты", "britons_buildings_report.md", []string{"брит", "britons"}},
-	{"cart", "Carthaginians", "Карфагеняне", "carthaginians_buildings_report.md", []string{"карфаг"}},
-	{"gaul", "Gauls", "Галлы", "gauls_buildings_report.md", []string{"галл"}},
-	{"germ", "Germans", "Германцы", "germans_buildings_report.md", []string{"герман", "german"}},
-	{"han", "Han Chinese", "Хань", "han_buildings_report.md", []string{"хан", "китай", "chinese"}},
-	{"iber", "Iberians", "Иберы", "iberians_buildings_report.md", []string{"ибер", "iberians"}},
-	{"kush", "Kushites", "Кушиты", "kushites_buildings_report.md", []string{"куш", "kushite"}},
-	{"mace", "Macedonians", "Македоняне", "macedonians_buildings_report.md", []string{"македон", "macedon"}},
-	{"maur", "Mauryas", "Маурьи", "mauryas_buildings_report.md", []string{"маурь", "маур", "индиец", "mauryas"}},
-	{"pers", "Achaemenid Persians", "Персы", "persians_buildings_report.md", []string{"перс", "persian", "ахеменид"}},
-	{"ptol", "Ptolemies", "Птолемеи", "ptolemies_buildings_report.md", []string{"птолеме", "ptolemy", "египт"}},
-	{"rome", "Romans", "Римляне", "romans_buildings_report.md", []string{"рим", "romans"}},
-	{"sele", "Seleucids", "Селевкиды", "seleucids_buildings_report.md", []string{"селевкид", "seleucid"}},
-	{"spart", "Spartans", "Спартанцы", "spartans_buildings_report.md", []string{"спарт", "spartan"}},
+	{"athen", "Athenians", "Афиняне", "athenians", []string{"афин", "athens"}},
+	{"brit", "Britons", "Бритты", "britons", []string{"брит", "britons"}},
+	{"cart", "Carthaginians", "Карфагеняне", "carthaginians", []string{"карфаг"}},
+	{"gaul", "Gauls", "Галлы", "gauls", []string{"галл"}},
+	{"germ", "Germans", "Германцы", "germans", []string{"герман", "german"}},
+	{"han", "Han Chinese", "Хань", "han", []string{"хан", "китай", "chinese"}},
+	{"iber", "Iberians", "Иберы", "iberians", []string{"ибер", "iberians"}},
+	{"kush", "Kushites", "Кушиты", "kushites", []string{"куш", "kushite"}},
+	{"mace", "Macedonians", "Македоняне", "macedonians", []string{"македон", "macedon"}},
+	{"maur", "Mauryas", "Маурьи", "mauryas", []string{"маурь", "маур", "индиец", "mauryas"}},
+	{"pers", "Achaemenid Persians", "Персы", "persians", []string{"перс", "persian", "ахеменид"}},
+	{"ptol", "Ptolemies", "Птолемеи", "ptolemies", []string{"птолеме", "ptolemy", "египт"}},
+	{"rome", "Romans", "Римляне", "romans", []string{"рим", "romans"}},
+	{"sele", "Seleucids", "Селевкиды", "seleucids", []string{"селевкид", "seleucid"}},
+	{"spart", "Spartans", "Спартанцы", "spartans", []string{"спарт", "spartan"}},
 }
 
 func ResolveCivInput(input string) (CivCode, bool) {
