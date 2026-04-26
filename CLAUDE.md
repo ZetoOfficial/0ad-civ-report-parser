@@ -216,7 +216,7 @@ testdata/
 make build                          # → bin/civreport
 go build -o civreport ./cmd/civreport
 
-# Один отчёт (после внедрения решений будет создавать ДВА файла)
+# Один отчёт
 make spart                          # → spartans_overview.md + spartans_structree.md
 make civ CIV=спарт                  # через алиас
 ./bin/civreport spart
