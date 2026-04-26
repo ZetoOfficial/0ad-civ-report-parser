@@ -74,6 +74,7 @@ func runOne(gen *render.Generator, input, outFlag string) {
 	if err != nil {
 		fail("generate %s: %v", info.Code, err)
 	}
+	// TODO(epic1-task4): replaced by skeleton-wrapped two-file write.
 	body := out.Overview + "\n" + out.Structree
 	outPath := outFlag
 	if outPath == "" {

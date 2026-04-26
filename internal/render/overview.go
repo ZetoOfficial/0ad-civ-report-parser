@@ -70,5 +70,7 @@ func (g *Generator) renderOverview(info civdata.CivCode, civ *civdata.Civ, bonus
 		}
 	}
 	fmt.Fprintln(&sb)
+	fmt.Fprintln(&sb, "---")
+	fmt.Fprintln(&sb)
 	return sb.String()
 }
