@@ -1,0 +1,13 @@
+# {{.CivName}} ({{.CivCodeUpper}}) — Civilization Overview
+
+> Сгенерировано {{.Date}} утилитой civreport.
+> Опции: include_history={{.IncludeHistory}}, include_icons={{.IncludeIcons}}, lang={{if .Lang}}{{.Lang}}{{else}}—{{end}}.
+>
+> Числовые значения — базовые из XML-шаблонов с применённым
+> наследованием (`parent`-цепочки, миксины, `op="mul"`/`op="add"`,
+> подстановки `{civ}`/`{native}`). Эффекты технологий и аур к статам
+> не применены.
+
+---
+
+{{.Body}}
