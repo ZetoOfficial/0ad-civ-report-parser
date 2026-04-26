@@ -20,6 +20,7 @@ func Defaults() Config {
 	return Config{
 		Gamedata: paths.DefaultGameDataRoot,
 		OutDir:   ".",
+		Lang:     "",
 	}
 }
 

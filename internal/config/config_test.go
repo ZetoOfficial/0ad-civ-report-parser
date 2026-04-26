@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/paths"
@@ -38,9 +39,14 @@ func TestLoad_EmptyPath(t *testing.T) {
 }
 
 func TestLoad_MissingFile(t *testing.T) {
-	_, err := Load("/nonexistent/no-such-config.json")
+	dir := t.TempDir()
+	path := filepath.Join(dir, "does-not-exist.json")
+	_, err := Load(path)
 	if err == nil {
 		t.Fatal("expected error for missing file path")
+	}
+	if !strings.Contains(err.Error(), "config:") {
+		t.Errorf("error message %q does not carry expected 'config:' namespace", err.Error())
 	}
 }
 
@@ -75,5 +81,8 @@ func TestLoad_BadJSON(t *testing.T) {
 	_, err := Load(path)
 	if err == nil {
 		t.Fatal("expected error for invalid JSON")
+	}
+	if !strings.Contains(err.Error(), "config:") {
+		t.Errorf("error message %q does not carry expected 'config:' namespace", err.Error())
 	}
 }
