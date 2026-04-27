@@ -1,26 +1,15 @@
 package render
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/testutil"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/tmpl"
 )
 
-func gamedataRoot() string {
-	if env := os.Getenv("OAD_GAMEDATA_ROOT"); env != "" {
-		return env
-	}
-	return "/Users/zeto/Projects/study/0ad/binaries/data/mods/public"
-}
-
-func skipIfNoGamedata(t *testing.T) {
-	t.Helper()
-	if _, err := os.Stat(filepath.Join(gamedataRoot(), "simulation/templates")); err != nil {
-		t.Skipf("gamedata unavailable: %v", err)
-	}
-}
+func gamedataRoot() string          { return testutil.GameDataRoot() }
+func skipIfNoGamedata(t *testing.T) { testutil.SkipIfNoGameData(t) }
 
 func newResolver(t *testing.T) *tmpl.Resolver {
 	t.Helper()
@@ -51,7 +40,7 @@ func TestNumericSpotChecks(t *testing.T) {
 		{"spart", "structures/spart/civil_centre", "TerritoryInfluence/Radius", 140},
 	}
 	for _, tc := range cases {
-		path := filepath.Join(gamedataRoot(), "simulation/templates", tc.template+".xml")
+		path := filepath.Join(testutil.GameDataRoot(), "simulation/templates", tc.template+".xml")
 		e, err := r.Resolve(path)
 		if err != nil {
 			t.Errorf("%s: resolve: %v", tc.template, err)

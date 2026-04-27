@@ -1,34 +1,20 @@
 package civdata
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/paths"
+	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/testutil"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/tmpl"
 )
 
-func gamedataRoot() string {
-	if env := os.Getenv("OAD_GAMEDATA_ROOT"); env != "" {
-		return env
-	}
-	return "/Users/zeto/Projects/study/0ad/binaries/data/mods/public"
-}
-
-func skipIfNoGamedata(t *testing.T) {
-	t.Helper()
-	if _, err := os.Stat(filepath.Join(gamedataRoot(), "simulation/templates")); err != nil {
-		t.Skipf("gamedata unavailable: %v", err)
-	}
-}
-
 func TestLoadPlayerTemplate_Spart(t *testing.T) {
-	skipIfNoGamedata(t)
+	testutil.SkipIfNoGameData(t)
 
-	layout := paths.Layout{Root: gamedataRoot()}
-	idx, err := tmpl.NewIndex(filepath.Join(gamedataRoot(), "simulation/templates"))
+	layout := paths.Layout{Root: testutil.GameDataRoot()}
+	idx, err := tmpl.NewIndex(filepath.Join(testutil.GameDataRoot(), "simulation/templates"))
 	if err != nil {
 		t.Fatalf("index: %v", err)
 	}
@@ -50,11 +36,4 @@ func TestLoadPlayerTemplate_Spart(t *testing.T) {
 	if strings.Contains(pt.History, `\n`) {
 		t.Errorf("History still contains literal \\n: %q", pt.History)
 	}
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

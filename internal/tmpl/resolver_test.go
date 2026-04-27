@@ -1,25 +1,19 @@
 package tmpl
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/testutil"
 )
 
-func gamedataRoot() string {
-	if env := os.Getenv("OAD_GAMEDATA_ROOT"); env != "" {
-		return env
-	}
-	return "/Users/zeto/Projects/study/0ad/binaries/data/mods/public"
-}
+func gamedataRoot() string          { return testutil.GameDataRoot() }
+func skipIfNoGamedata(t *testing.T) { testutil.SkipIfNoGameData(t) }
 
 func newResolver(t *testing.T) *Resolver {
 	t.Helper()
-	templates := filepath.Join(gamedataRoot(), "simulation/templates")
-	if _, err := os.Stat(templates); err != nil {
-		t.Skipf("gamedata not available at %s: %v", templates, err)
-	}
-	idx, err := NewIndex(templates)
+	skipIfNoGamedata(t)
+	idx, err := NewIndex(filepath.Join(gamedataRoot(), "simulation/templates"))
 	if err != nil {
 		t.Fatalf("index: %v", err)
 	}
