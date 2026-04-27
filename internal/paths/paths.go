@@ -54,3 +54,15 @@ func (l Layout) PlayerTemplate(civ string) string {
 func (l Layout) TeamBonus(civ string) string {
 	return filepath.Join(l.Auras(), "teambonuses", civ+"_player_teambonus.json")
 }
+
+func (l Layout) DamageTypes() string {
+	return filepath.Join(l.Root, "simulation", "data", "damage_types")
+}
+
+func (l Layout) Resources() string {
+	return filepath.Join(l.Root, "simulation", "data", "resources")
+}
+
+func (l Layout) StatusEffects() string {
+	return filepath.Join(l.Root, "simulation", "data", "status_effects")
+}

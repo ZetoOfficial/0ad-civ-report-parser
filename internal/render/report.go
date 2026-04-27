@@ -80,10 +80,10 @@ func (g *Generator) Generate(civInfo civdata.CivCode) (Output, error) {
 	}, nil
 }
 
-// RenderCommon returns the body of the shared common.md.
-// In epic 1 this is a placeholder — populated in epic 2.
+// RenderCommon returns the body of the shared common.md (without the
+// skeleton wrapper). See internal/render/common.go for section layout.
 func (g *Generator) RenderCommon() (string, error) {
-	return renderCommonBody(), nil
+	return g.renderCommonBody()
 }
 
 func formatStartEntities(entities []civdata.StartEntity) string {

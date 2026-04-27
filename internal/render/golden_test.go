@@ -63,8 +63,8 @@ func TestGoldenGermStructure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RenderCommon: %v", err)
 	}
-	if !strings.Contains(commonBody, "TODO") {
-		t.Errorf("common body should mention TODO placeholder in epic 1")
+	if !strings.Contains(commonBody, "## Модификаторы Advanced") {
+		t.Errorf("common missing Advanced section")
 	}
 
 	// Optional reference goldens at testdata/golden/germans_*.md.
