@@ -157,14 +157,14 @@ func (g *Generator) commonResources(sb *strings.Builder) error {
 			r.Code, escapeTable(r.Name), escapeTable(r.Description))
 	}
 	fmt.Fprintln(sb)
-	any := false
+	hasSubtypes := false
 	for _, r := range rs {
 		if len(r.Subtypes) > 0 {
-			any = true
+			hasSubtypes = true
 			break
 		}
 	}
-	if any {
+	if hasSubtypes {
 		fmt.Fprintln(sb, "### Подтипы ресурсов")
 		fmt.Fprintln(sb)
 		for _, r := range rs {
