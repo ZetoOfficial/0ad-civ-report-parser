@@ -2,6 +2,7 @@ package i18n
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -70,5 +71,8 @@ func FormatPercent(multiplier float64) string {
 		sign = "−"
 		delta = -delta
 	}
-	return fmt.Sprintf("%s%s%%", sign, FormatNumber(delta))
+	// Round to 6 significant decimal places to avoid float64 noise
+	// (e.g. 1.1 → 10.000000000000009 → 10).
+	rounded := math.Round(delta*1e6) / 1e6
+	return fmt.Sprintf("%s%s%%", sign, FormatNumber(rounded))
 }

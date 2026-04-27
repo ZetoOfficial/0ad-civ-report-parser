@@ -9,9 +9,10 @@ import (
 
 func DescribeModification(m tech.Modification) string {
 	target := translatePath(m.Value)
+	var body string
 	switch {
 	case m.Multiply != 0:
-		return fmt.Sprintf("%s %s", target, FormatPercent(m.Multiply))
+		body = fmt.Sprintf("%s %s", target, FormatPercent(m.Multiply))
 	case m.Add != 0:
 		sign := "+"
 		val := m.Add
@@ -19,11 +20,16 @@ func DescribeModification(m tech.Modification) string {
 			sign = "−"
 			val = -val
 		}
-		return fmt.Sprintf("%s %s%s", target, sign, FormatNumber(val))
+		body = fmt.Sprintf("%s %s%s", target, sign, FormatNumber(val))
 	case m.Replace != nil:
-		return fmt.Sprintf("%s = %v", target, m.Replace)
+		body = fmt.Sprintf("%s = %v", target, m.Replace)
+	default:
+		body = target
 	}
-	return target
+	if affects := m.AffectsList(); len(affects) > 0 {
+		body += fmt.Sprintf(" (только %s)", strings.Join(affects, "+"))
+	}
+	return body
 }
 
 func DescribeModifications(mods []tech.Modification) string {
