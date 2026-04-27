@@ -10,10 +10,32 @@ import (
 )
 
 type Modification struct {
-	Value    string  `json:"value"`
-	Multiply float64 `json:"multiply,omitempty"`
-	Add      float64 `json:"add,omitempty"`
-	Replace  any     `json:"replace,omitempty"`
+	Value      string          `json:"value"`
+	Multiply   float64         `json:"multiply,omitempty"`
+	Add        float64         `json:"add,omitempty"`
+	Replace    any             `json:"replace,omitempty"`
+	AffectsRaw json.RawMessage `json:"affects,omitempty"`
+}
+
+// AffectsList parses the per-modification "affects" field, which the JSON
+// source may store either as a single string ("Melee") or an array
+// (["Melee", "Cavalry"]). Returns nil if the field is absent.
+func (m Modification) AffectsList() []string {
+	if len(m.AffectsRaw) == 0 {
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(m.AffectsRaw, &s); err == nil {
+		if s == "" {
+			return nil
+		}
+		return []string{s}
+	}
+	var arr []string
+	if err := json.Unmarshal(m.AffectsRaw, &arr); err == nil {
+		return arr
+	}
+	return nil
 }
 
 type Cost struct {
@@ -42,8 +64,10 @@ type Technology struct {
 	Pair          string         `json:"pair"`
 	Top           string         `json:"top"`
 	Bottom        string         `json:"bottom"`
-	Icon          string         `json:"icon"`
-	ReplacedBy    string         `json:"replacedBy"`
+	Icon                string         `json:"icon"`
+	ReplacedBy          string         `json:"replacedBy"`
+	RequirementsTooltip string         `json:"requirementsTooltip"`
+	Replaces            []string       `json:"replaces"`
 }
 
 func Load(path string) (*Technology, error) {
