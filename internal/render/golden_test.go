@@ -27,9 +27,13 @@ func TestGoldenGermStructure(t *testing.T) {
 		t.Fatalf("generate germ: %v", err)
 	}
 
-	// Overview line-count threshold tightened to 50 in Task 7.
+	// After epic 2, overview body grows from ~30 lines (epic 1) to
+	// ~80–150. Threshold raised to 50 — leaves headroom but still flags
+	// regressions where major sections collapse to placeholders.
 	overviewLines := strings.Count(out.Overview, "\n") + 1
-	_ = overviewLines
+	if overviewLines < 50 {
+		t.Errorf("overview too short: %d lines (want >= 50)", overviewLines)
+	}
 	structreeLines := strings.Count(out.Structree, "\n") + 1
 	if structreeLines < 100 {
 		t.Errorf("structree too short: %d lines (want >= 100)", structreeLines)
@@ -38,7 +42,13 @@ func TestGoldenGermStructure(t *testing.T) {
 	overviewMust := []string{
 		"## Идентичность",
 		"- **Код:** `germ`",
+		"## Герои",
+		"## Уникальные строения",
+		"## Уникальные технологии",
 		"## Цивилизационные бонусы",
+		"## Командный бонус",
+		"## Технологии, недоступные Германцы",
+		"common.md#модификаторы-advanced",
 	}
 	for _, m := range overviewMust {
 		if !strings.Contains(out.Overview, m) {
@@ -63,18 +73,27 @@ func TestGoldenGermStructure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RenderCommon: %v", err)
 	}
-	if !strings.Contains(commonBody, "## Модификаторы Advanced") {
-		t.Errorf("common missing Advanced section")
+	commonMust := []string{
+		"## Модификаторы Advanced",
+		"## Модификаторы Elite",
+		"## Прочие глобальные авто-эффекты",
+		"## Типы урона",
+		"## Типы ресурсов",
+		"## Статус-эффекты",
+	}
+	for _, m := range commonMust {
+		if !strings.Contains(commonBody, m) {
+			t.Errorf("common missing %q", m)
+		}
 	}
 
 	// Optional reference goldens at testdata/golden/germans_*.md.
-	// In Epic 1 we only verify they're readable when present; Epic 4
-	// will replace this with a strict byte-diff against Generate output.
+	// Strict-byte-diff arrives in epic 4.
 	wd, _ := os.Getwd()
 	for _, f := range []string{"germans_overview.md", "germans_structree.md"} {
 		path := filepath.Join(wd, "..", "..", "testdata", "golden", f)
 		if _, err := os.Stat(path); err != nil {
-			t.Logf("golden reference %s not present (ok in epic 1)", f)
+			t.Logf("golden reference %s not present (ok pre-epic-4)", f)
 			continue
 		}
 		if _, err := os.ReadFile(path); err != nil {

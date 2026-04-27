@@ -31,6 +31,8 @@ func main() {
 	flag.BoolVar(&printBaseName, "print-basename", false, "print BaseName for the given civ and exit (used by Makefile)")
 	flag.BoolVar(&all, "all", false, "generate reports for all 15 civilizations")
 	flag.BoolVar(&check, "check", false, "smoke-check: parse all civs without writing files")
+	var includeHistory bool
+	flag.BoolVar(&includeHistory, "include-history", false, "include the civ history paragraph in <civ>_overview.md (off by default)")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: civreport [flags] <civ>\n\n")
 		fmt.Fprintf(os.Stderr, "Generate Russian-language overview + structure-tree reports\n")
@@ -63,6 +65,9 @@ func main() {
 	if outDirFlag != "" {
 		cfg.OutDir = outDirFlag
 	}
+	if includeHistory {
+		cfg.IncludeHistory = true
+	}
 
 	if printBaseName {
 		args := flag.Args()
@@ -87,6 +92,7 @@ func main() {
 	}
 	resolver := tmpl.NewResolver(idx)
 	gen := render.NewGenerator(paths.Layout{Root: cfg.Gamedata}, resolver)
+	gen.IncludeHistory = cfg.IncludeHistory
 
 	switch {
 	case check:

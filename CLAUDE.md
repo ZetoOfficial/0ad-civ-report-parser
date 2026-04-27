@@ -106,17 +106,29 @@ internal/tmpl/                     резолвер XML-шаблонов (parent
 internal/civdata/                  цивилизации, перечисление сущностей
   ├── codes.go                     таблица 15 цив + русские/английские алиасы
   ├── civ.go                       парсинг civs/{code}.json (Culture как string|array)
+  ├── player.go                    парсинг Player-шаблона (Identity/History/Icon/GenericName)
   └── enumerate.go                 glob structures/units, классификация юнитов, фазы
-internal/tech/tech.go              технологии: загрузка JSON, AllCivBonuses, AllNotCiv
-internal/aura/aura.go              авры: hero/catafalque/structure (только список)
+internal/tech/
+  ├── tech.go                      технологии: загрузка JSON, AllCivBonuses, AllNotCiv
+  ├── auto.go                      глобальные autoResearch (unit_advanced/elite)
+  └── requirements.go              парсинг entity/all/any/notciv с человеко-описанием
+internal/aura/
+  ├── aura.go                      авры: hero/catafalque/structure (только список)
+  └── teambonus.go                 загрузка auras/teambonuses/<civ>_player_teambonus
 internal/i18n/                     русские термины + переводчик путей модификаций
   ├── ru.go                        ResourceName, DamageType, PhaseRequirement, FormatNumber
-  └── modifier.go                  pathTranslations (~50 ключей) + DescribeModification
-internal/render/                   рендер markdown (структура зашита в Go-коде)
+  ├── modifier.go                  pathTranslations (~50 ключей) + DescribeModification
+  └── tech_name.go                 TechDisplayName — человекочитаемые имена технологий
+internal/render/                   рендер markdown
   ├── format.go                    форматтеры одного поля (FormatCost, FormatHP, ...)
   ├── report.go                    Generator, Generate(), header/overview/phases
+  ├── overview.go                  рендер блоков для overview-вкладки
+  ├── common.go                    рендер common.md
+  ├── common_data.go               данные для common.md (авто-эффекты, damage, resources)
   ├── units.go                     приложение по юнитам, ауры героев/катафалка
   └── summary.go                   сводная таблица в конце
+internal/testutil/
+  └── gamedata.go                  helpers для тестов (skipIfNoGamedata, gamedataRoot, newResolver)
 testdata/golden/                   эталоны для smoke-тестов
   ├── germans_overview.md          эталон обзорного отчёта по germ (untracked)
   └── germans_structree.md         эталон структурного отчёта по germ (untracked)
@@ -153,17 +165,17 @@ internal/i18n/
   ├── modifier.go                  + поддержка per-mod affects
   └── po.go                        NEW: загрузчик l10n/<lang>.public-*.po и lookup
 internal/render/
-  ├── skeleton_overview.tmpl       NEW: text/template для Civilization Overview
-  ├── skeleton_structree.tmpl      NEW: text/template для Structure Tree
-  ├── skeleton_common.tmpl         NEW: text/template для common.md
-  ├── skeleton.go                  NEW: загрузка и применение skeleton-шаблонов
-  ├── format.go                    + форматтеры новых полей (Loot, Trickle, Turrets,
+  ├── skeleton_overview.tmpl       text/template для Civilization Overview
+  ├── skeleton_structree.tmpl      text/template для Structure Tree
+  ├── skeleton_common.tmpl         text/template для common.md
+  ├── skeleton.go                  загрузка и применение skeleton-шаблонов
+  ├── format.go                    форматтеры новых полей (Loot, Trickle, Turrets,
   │                                Projectiles, Splash, Bonuses, Healer, Run, Capture)
-  ├── overview.go                  NEW: рендер блоков для overview-вкладки
-  ├── structree.go                 NEW: рендер блоков для structree-вкладки
+  ├── overview.go                  рендер блоков для overview-вкладки
+  ├── structree.go                 рендер блоков для structree-вкладки
   │                                (заменяет report.go/units.go/summary.go)
-  ├── common.go                    NEW: рендер common.md
-  └── icons.go                     NEW: опциональная вставка ![alt](path)
+  ├── common.go                    рендер common.md
+  └── icons.go                     NEW: опциональная вставка ![alt](path) (эпик 5)
 testdata/
   ├── golden/                      эталоны (golden-тест на germ переписать под новый формат)
   └── fixtures/                    минимальный mock simulation/ для unit-тестов
@@ -208,6 +220,8 @@ testdata/
   для алфавитной сортировки внутри группы, по `BuildingSortKey` для
   фиксированного порядка зданий внутри фазы). Маршрут от ввода до файла
   не использует случайность.
+- **После эпика 2**: overview содержит 8 секций + опц. History;
+  common.md наполнен (Advanced/Elite/Auto/Damage/Resources/Status).
 
 ## Команды
 
@@ -237,9 +251,9 @@ OAD_GAMEDATA_ROOT=/path ./bin/civreport spart
 
 # Конфигурация (перекрывает дефолты из config.json)
 ./bin/civreport --config ./my-config.json spart
-./bin/civreport --lang ru spart                      # gettext-перевод
-./bin/civreport --include-history spart              # история цивы в overview
-./bin/civreport --include-icons spart                # иконки в structree
+./bin/civreport --lang ru spart                      # gettext-перевод (не реализовано до эпика 5)
+./bin/civreport --include-history spart              # история цивы в overview (работает с эпика 2)
+./bin/civreport --include-icons spart                # иконки в structree (не реализовано до эпика 5)
 
 # Тесты
 make test
