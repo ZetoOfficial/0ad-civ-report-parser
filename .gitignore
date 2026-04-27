@@ -19,6 +19,9 @@
 
 bin/
 
+# git worktrees (isolated workspaces for subagent-driven development)
+.worktrees/
+
 # user-supplied untracked golden references — protect from accidental
 # `git clean -fd` and similar destructive commands. They become tracked
 # in epic 4 when strict byte-diff is introduced.
