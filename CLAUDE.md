@@ -220,8 +220,8 @@ testdata/
   для алфавитной сортировки внутри группы, по `BuildingSortKey` для
   фиксированного порядка зданий внутри фазы). Маршрут от ввода до файла
   не использует случайность.
-- **После эпика 2**: overview содержит 8 секций + опц. History;
-  common.md наполнен (Advanced/Elite/Auto/Damage/Resources/Status).
+- **После эпика 2**: overview содержит 7 секций + опц. History +
+  footer-сноску; common.md наполнен (Advanced/Elite/Auto/Damage/Resources/Status).
 
 ## Команды
 

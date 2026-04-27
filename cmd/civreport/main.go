@@ -18,12 +18,13 @@ import (
 
 func main() {
 	var (
-		gamedataFlag  string
-		outDirFlag    string
-		configFlag    string
-		printBaseName bool
-		all           bool
-		check         bool
+		gamedataFlag   string
+		outDirFlag     string
+		configFlag     string
+		printBaseName  bool
+		all            bool
+		check          bool
+		includeHistory bool
 	)
 	flag.StringVar(&gamedataFlag, "gamedata", "", "path to 0 A.D. mods/public root (overrides OAD_GAMEDATA_ROOT and config)")
 	flag.StringVar(&outDirFlag, "out-dir", "", "output directory for generated files (default: from config or '.')")
@@ -31,7 +32,6 @@ func main() {
 	flag.BoolVar(&printBaseName, "print-basename", false, "print BaseName for the given civ and exit (used by Makefile)")
 	flag.BoolVar(&all, "all", false, "generate reports for all 15 civilizations")
 	flag.BoolVar(&check, "check", false, "smoke-check: parse all civs without writing files")
-	var includeHistory bool
 	flag.BoolVar(&includeHistory, "include-history", false, "include the civ history paragraph in <civ>_overview.md (off by default)")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: civreport [flags] <civ>\n\n")
@@ -161,9 +161,9 @@ func runCheck(gen *render.Generator, cfg *config.Config) {
 		stLines := strings.Count(out.Structree, "\n") + 1
 		mark := "OK"
 		if ovLines < 30 || stLines < 100 {
-			// Informational only. Epic 1 overviews are short by design (Identity
-			// / CivSpecific / Heroes blocks land in epic 2). Do NOT fail the
-			// check on WARN — only Generate/RenderCommon errors count as failures.
+			// Informational only. The 30/100 thresholds are deliberately loose
+			// — only Generate/RenderCommon errors are fatal. Tighter regression
+			// gate lives in TestGoldenGermStructure.
 			mark = "WARN"
 		}
 		fmt.Printf("%s %s (overview=%d, structree=%d)\n", mark, info.Code, ovLines, stLines)
