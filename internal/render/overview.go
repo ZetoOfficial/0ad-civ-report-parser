@@ -21,8 +21,8 @@ import (
 //  3. Герои
 //  4. Уникальные строения
 //  5. Уникальные технологии
-//  6. Footer-ссылка на common.md (auto-research effects)
-//  7. Цивилизационные бонусы
+//  6. Цивилизационные бонусы
+//  7. Footer-ссылка на common.md (auto-research effects)
 //  8. Командный бонус
 //  9. Технологии, недоступные …
 func (g *Generator) renderOverview(
@@ -35,7 +35,7 @@ func (g *Generator) renderOverview(
 	heroAuras []*aura.Aura,
 ) string {
 	var sb strings.Builder
-	g.overviewIdentity(&sb, info, civ, player)
+	g.overviewIdentity(&sb, civ, player)
 	if g.IncludeHistory && player != nil && player.History != "" {
 		g.overviewHistory(&sb, player)
 	}
@@ -52,7 +52,7 @@ func (g *Generator) renderOverview(
 // 1. Идентичность
 
 func (g *Generator) overviewIdentity(sb *strings.Builder,
-	info civdata.CivCode, civ *civdata.Civ, player *civdata.PlayerTemplate) {
+	civ *civdata.Civ, player *civdata.PlayerTemplate) {
 
 	fmt.Fprintln(sb, "## Идентичность")
 	fmt.Fprintln(sb)
