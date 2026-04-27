@@ -8,9 +8,10 @@ import (
 // and returns it as an *Aura. This is the structured source for the
 // "Командный бонус" block in the civilization overview.
 //
-// Returns an os.PathError if the file is missing — callers may treat
-// missing as "civ has no team bonus" if appropriate. In R28 every civ
-// has exactly one team bonus.
+// If the file is missing, the returned error wraps *os.PathError; callers
+// can detect absence with errors.Is(err, fs.ErrNotExist). In R28 every
+// civ has exactly one team bonus, so callers may treat absence as "civ
+// has no team bonus" without further branching.
 func LoadTeamBonus(layout paths.Layout, civCode string) (*Aura, error) {
 	return Load(layout.TeamBonus(civCode))
 }

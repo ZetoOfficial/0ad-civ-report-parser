@@ -1,6 +1,8 @@
 package aura
 
 import (
+	"errors"
+	"io/fs"
 	"testing"
 
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/paths"
@@ -29,5 +31,15 @@ func TestLoadTeamBonus_Spart(t *testing.T) {
 		if m.Replace == nil {
 			t.Errorf("modification %s: expected Replace to be set", m.Value)
 		}
+	}
+}
+
+func TestLoadTeamBonus_MissingFile(t *testing.T) {
+	testutil.SkipIfNoGameData(t)
+
+	layout := paths.Layout{Root: testutil.GameDataRoot()}
+	_, err := LoadTeamBonus(layout, "no_such_civ_xyz")
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("missing file: want errors.Is(err, fs.ErrNotExist) true; got %v", err)
 	}
 }
