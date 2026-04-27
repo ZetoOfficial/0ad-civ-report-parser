@@ -1,6 +1,8 @@
 package render
 
 import (
+	"errors"
+	"io/fs"
 	"path/filepath"
 	"strings"
 
@@ -12,9 +14,10 @@ import (
 )
 
 type Generator struct {
-	Layout   paths.Layout
-	Resolver *tmpl.Resolver
-	Catalog  *tech.Catalog
+	Layout         paths.Layout
+	Resolver       *tmpl.Resolver
+	Catalog        *tech.Catalog
+	IncludeHistory bool
 }
 
 // Output holds the rendered markdown bodies for one civilization.
@@ -57,8 +60,22 @@ func (g *Generator) Generate(civInfo civdata.CivCode) (Output, error) {
 	heroAuras, _ := aura.ListInDir(g.Layout.HeroAuras(), civInfo.Code+"_hero_")
 	catafalqueAuras, _ := aura.ListInDir(g.Layout.CatafalqueAuras(), civInfo.Code+"_")
 
+	// New in epic 2: Player template (Identity), team bonus aura.
+	// LoadPlayerTemplate failure is fatal — every civ has a Player template.
+	player, err := civdata.LoadPlayerTemplate(g.Layout, civInfo.Code, g.Resolver)
+	if err != nil {
+		return Output{}, err
+	}
+	// LoadTeamBonus may legitimately be missing for civs without one in
+	// future R-versions, but in R28 every civ has one. Use errors.Is to
+	// traverse the %w wrap chain inside aura.Load.
+	teamBonus, err := aura.LoadTeamBonus(g.Layout, civInfo.Code)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return Output{}, err
+	}
+
 	return Output{
-		Overview:  g.renderOverview(civInfo, civ, bonuses, notciv),
+		Overview:  g.renderOverview(civInfo, civ, player, teamBonus, bonuses, notciv, units, buildings, heroAuras),
 		Structree: g.renderStructree(civInfo.Code, buildings, units, heroAuras, catafalqueAuras),
 	}, nil
 }

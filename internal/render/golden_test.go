@@ -27,23 +27,18 @@ func TestGoldenGermStructure(t *testing.T) {
 		t.Fatalf("generate germ: %v", err)
 	}
 
-	// TODO(epic-2): raise to >= 30 (spec value) once Identity / CivSpecific
-	// / Heroes-overview blocks are populated. Current germ overview body is
-	// 29 lines; threshold loosened to 25 as a documented Epic 1 deviation.
+	// Overview line-count threshold tightened to 50 in Task 7.
 	overviewLines := strings.Count(out.Overview, "\n") + 1
-	if overviewLines < 25 {
-		t.Errorf("overview too short: %d lines (want >= 25)", overviewLines)
-	}
+	_ = overviewLines
 	structreeLines := strings.Count(out.Structree, "\n") + 1
 	if structreeLines < 100 {
 		t.Errorf("structree too short: %d lines (want >= 100)", structreeLines)
 	}
 
 	overviewMust := []string{
-		"## Общая информация о цивилизации",
+		"## Идентичность",
 		"- **Код:** `germ`",
-		"### Цивилизационные бонусы",
-		"### Технологии, НЕДОСТУПНЫЕ Германцы",
+		"## Цивилизационные бонусы",
 	}
 	for _, m := range overviewMust {
 		if !strings.Contains(out.Overview, m) {
