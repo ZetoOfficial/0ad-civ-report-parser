@@ -80,3 +80,42 @@ func TestTechDisplayName_OtherCivFallsBack(t *testing.T) {
 		t.Errorf("got %q", got)
 	}
 }
+
+func TestDescribeModification_NegativeAdd(t *testing.T) {
+	raw := `{"value":"Health/Max","add":-5}`
+	var m tech.Modification
+	if err := json.Unmarshal([]byte(raw), &m); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	got := DescribeModification(m)
+	if !strings.Contains(got, "−5") {
+		t.Errorf("expected unicode minus and 5 in %q", got)
+	}
+}
+
+func TestDescribeModification_ReplaceBranch(t *testing.T) {
+	raw := `{"value":"Cost/Resources/food","replace":0,"affects":"Hero"}`
+	var m tech.Modification
+	if err := json.Unmarshal([]byte(raw), &m); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	got := DescribeModification(m)
+	if !strings.Contains(got, "= 0") {
+		t.Errorf("expected `= 0` in %q", got)
+	}
+	if !strings.Contains(got, "(только Hero)") {
+		t.Errorf("expected `(только Hero)` suffix in %q", got)
+	}
+}
+
+func TestDescribeModification_AffectsArrayLong(t *testing.T) {
+	raw := `{"value":"Attack/Melee/Damage/Hack","multiply":1.1,"affects":["Melee","Cavalry","Champion"]}`
+	var m tech.Modification
+	if err := json.Unmarshal([]byte(raw), &m); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	got := DescribeModification(m)
+	if !strings.Contains(got, "(только Melee+Cavalry+Champion)") {
+		t.Errorf("expected three-way affects join in %q", got)
+	}
+}

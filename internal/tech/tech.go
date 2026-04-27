@@ -33,7 +33,16 @@ func (m Modification) AffectsList() []string {
 	}
 	var arr []string
 	if err := json.Unmarshal(m.AffectsRaw, &arr); err == nil {
-		return arr
+		out := arr[:0]
+		for _, s := range arr {
+			if s != "" {
+				out = append(out, s)
+			}
+		}
+		if len(out) == 0 {
+			return nil
+		}
+		return out
 	}
 	return nil
 }
