@@ -50,3 +50,7 @@ func (l Layout) AuraJSON(rel string) string  { return filepath.Join(l.Auras(), r
 func (l Layout) PlayerTemplate(civ string) string {
 	return filepath.Join(l.Templates(), "special", "players", civ+".xml")
 }
+
+func (l Layout) TeamBonus(civ string) string {
+	return filepath.Join(l.Auras(), "teambonuses", civ+"_player_teambonus.json")
+}
