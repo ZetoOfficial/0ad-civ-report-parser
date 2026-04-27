@@ -31,7 +31,7 @@ func DescribeRequirements(req Requirements) string {
 			}
 		case "notciv":
 			if list := stringOrList(req["notciv"]); len(list) > 0 {
-				parts = append(parts, "не для цив: "+strings.Join(list, ", "))
+				parts = append(parts, "не для цивилизаций: "+strings.Join(list, ", "))
 			}
 		case "tech":
 			if v, ok := req["tech"].(string); ok {
@@ -91,6 +91,9 @@ func describeJoin(v any, sep string) string {
 	}
 	if len(parts) == 0 {
 		return ""
+	}
+	if len(parts) == 1 {
+		return parts[0]
 	}
 	return "(" + strings.Join(parts, sep) + ")"
 }

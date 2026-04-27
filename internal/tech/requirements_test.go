@@ -71,3 +71,10 @@ func TestDescribeRequirements_Empty(t *testing.T) {
 		t.Errorf("empty map → %q; want empty", got)
 	}
 }
+
+func TestDescribeRequirements_Civ(t *testing.T) {
+	got := DescribeRequirements(Requirements{"civ": "spart"})
+	if got != "цивилизация: spart" {
+		t.Errorf("got %q; want %q", got, "цивилизация: spart")
+	}
+}

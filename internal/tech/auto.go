@@ -3,7 +3,6 @@ package tech
 import (
 	"path/filepath"
 	"sort"
-	"strings"
 )
 
 // GlobalAutoResearch returns autoResearch technologies from the root
@@ -23,10 +22,6 @@ func (c *Catalog) GlobalAutoResearch() ([]*Technology, error) {
 	sort.Strings(matches)
 	out := []*Technology{}
 	for _, p := range matches {
-		// filepath.Glob with "*.json" already excludes subdirs, but be defensive.
-		if strings.Contains(p, string(filepath.Separator)+"civbonuses"+string(filepath.Separator)) {
-			continue
-		}
 		t, err := Load(p)
 		if err != nil {
 			return nil, err

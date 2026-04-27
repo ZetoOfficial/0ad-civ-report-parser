@@ -48,22 +48,22 @@ type Cost struct {
 type Requirements map[string]any
 
 type Technology struct {
-	Name          string
-	Path          string
-	GenericName   string         `json:"genericName"`
-	Description   string         `json:"description"`
-	SpecificName  map[string]any `json:"specificName,omitempty"`
-	AutoResearch  bool           `json:"autoResearch"`
-	Cost          Cost           `json:"cost"`
-	ResearchTime  float64        `json:"researchTime"`
-	Tooltip       string         `json:"tooltip"`
-	Modifications []Modification `json:"modifications"`
-	Affects       []string       `json:"affects"`
-	Requirements  Requirements   `json:"requirements"`
-	Supersedes    string         `json:"supersedes"`
-	Pair          string         `json:"pair"`
-	Top           string         `json:"top"`
-	Bottom        string         `json:"bottom"`
+	Name                string
+	Path                string
+	GenericName         string         `json:"genericName"`
+	Description         string         `json:"description"`
+	SpecificName        map[string]any `json:"specificName,omitempty"`
+	AutoResearch        bool           `json:"autoResearch"`
+	Cost                Cost           `json:"cost"`
+	ResearchTime        float64        `json:"researchTime"`
+	Tooltip             string         `json:"tooltip"`
+	Modifications       []Modification `json:"modifications"`
+	Affects             []string       `json:"affects"`
+	Requirements        Requirements   `json:"requirements"`
+	Supersedes          string         `json:"supersedes"`
+	Pair                string         `json:"pair"`
+	Top                 string         `json:"top"`
+	Bottom              string         `json:"bottom"`
 	Icon                string         `json:"icon"`
 	ReplacedBy          string         `json:"replacedBy"`
 	RequirementsTooltip string         `json:"requirementsTooltip"`

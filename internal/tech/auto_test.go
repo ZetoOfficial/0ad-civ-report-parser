@@ -32,8 +32,8 @@ func TestGlobalAutoResearch_R28Set(t *testing.T) {
 		}
 	}
 	mustExclude := []string{
-		"spart_population",
-		"maur_elephants",
+		"germ_meat",      // civbonuses/ subdir, civ-specific (requirements.civ=germ)
+		"maur_elephants", // civbonuses/ subdir, civ-specific (requirements.civ=maur)
 	}
 	for _, name := range mustExclude {
 		if gotNames[name] {
