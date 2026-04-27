@@ -47,3 +47,6 @@ func (l Layout) UnitsOf(civ string) string   { return filepath.Join(l.Templates(
 func (l Layout) CivJSON(civ string) string   { return filepath.Join(l.Civs(), civ+".json") }
 func (l Layout) TechJSON(name string) string { return filepath.Join(l.Technologies(), name+".json") }
 func (l Layout) AuraJSON(rel string) string  { return filepath.Join(l.Auras(), rel+".json") }
+func (l Layout) PlayerTemplate(civ string) string {
+	return filepath.Join(l.Templates(), "special", "players", civ+".xml")
+}
