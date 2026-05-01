@@ -51,11 +51,16 @@ func IdentifyWallSets(buildings []Entity, civCode string) (groups []*WallSetGrou
 
 		for _, child := range ws.Children {
 			role := child.Name
+			if role == "" {
+				continue
+			}
 			tokenRaw := strings.TrimSpace(child.Text)
 			if tokenRaw == "" {
 				continue
 			}
 			tok := tmpl.SubstCiv(tokenRaw, civCode)
+			// Pieces missing from byID are silently skipped: Reach already
+			// reported them via res.Skipped, so no extra logging is needed.
 			if piece, ok := byID[tok]; ok {
 				g.Pieces = append(g.Pieces, WallPiece{Role: role, Entity: piece})
 				removeIDs[piece.TemplateID] = struct{}{}
@@ -67,12 +72,12 @@ func IdentifyWallSets(buildings []Entity, civCode string) (groups []*WallSetGrou
 
 	// Sort groups deterministically by wrapper's sort key.
 	sort.SliceStable(groups, func(i, j int) bool {
-		ai, an := BuildingSortKey(groups[i].Wrapper)
-		aj, an2 := BuildingSortKey(groups[j].Wrapper)
+		ai, _ := BuildingSortKey(groups[i].Wrapper)
+		aj, _ := BuildingSortKey(groups[j].Wrapper)
 		if ai != aj {
 			return ai < aj
 		}
-		return an < an2
+		return groups[i].Wrapper.Basename() < groups[j].Wrapper.Basename()
 	})
 
 	// Build filtered slice, preserving order.

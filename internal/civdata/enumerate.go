@@ -145,6 +145,7 @@ var buildingOrderHints = []string{
 	"wall_long",
 	"wall_gate",
 	"wall_tower",
+	"wallset_palisade",
 	"wallset_stone",
 	"fortress",
 	"arsenal",
