@@ -112,19 +112,35 @@ func (g *Generator) renderBuilding(sb *strings.Builder, civCode string, b civdat
 	g.renderResearches(sb, civCode, b)
 }
 
+type trainRow struct {
+	rank int
+	name string
+	line string
+}
+
 func (g *Generator) renderTrains(sb *strings.Builder, civCode string, b civdata.Entity, unitByID map[string]civdata.Entity) {
 	tokens := collectTrainTokens(b.Element)
 	if len(tokens) == 0 {
 		return
 	}
-	rows := []string{}
+	var rows []trainRow
+	seen := map[string]struct{}{}
 	for _, tok := range tokens {
 		expanded := tmpl.SubstCiv(tok, civCode)
 		u, ok := unitByID[expanded]
 		if !ok {
 			continue
 		}
-		row := fmt.Sprintf("| %s | %s | %s | %s | %s | %s | %s | %s |",
+		if _, dup := seen[u.TemplateID]; dup {
+			continue
+		}
+		seen[u.TemplateID] = struct{}{}
+		phase := unitPhase(u, g.Index)
+		phaseLabel := phase.RU()
+		if phaseLabel == "" {
+			phaseLabel = "—"
+		}
+		line := fmt.Sprintf("| %s | %s | %s | %s | %s | %s | %s | %s | %s |",
 			FormatGenericName(u.Element),
 			FormatCost(u.Element),
 			FormatBuildTime(u.Element),
@@ -133,20 +149,81 @@ func (g *Generator) renderTrains(sb *strings.Builder, civCode string, b civdata.
 			FormatArmorHPC(u.Element),
 			FormatWalkSpeed(u.Element),
 			FormatPopulation(u.Element),
+			phaseLabel,
 		)
-		rows = append(rows, row)
+		rows = append(rows, trainRow{
+			rank: phaseRank(phaseLabel),
+			name: FormatGenericName(u.Element),
+			line: line,
+		})
 	}
 	if len(rows) == 0 {
 		return
 	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		if rows[i].rank != rows[j].rank {
+			return rows[i].rank < rows[j].rank
+		}
+		return rows[i].name < rows[j].name
+	})
 	fmt.Fprintln(sb, "#### Тренирует")
 	fmt.Fprintln(sb)
-	fmt.Fprintln(sb, "| Юнит | Стоимость | Время | ОЗ | Атака | Броня (H/P/C) | Скорость | Население |")
-	fmt.Fprintln(sb, "|------|-----------|-------|-----|-------|---------------|----------|-----------|")
+	fmt.Fprintln(sb, "| Юнит | Стоимость | Время | ОЗ | Атака | Броня (H/P/C) | Скорость | Население | Фаза |")
+	fmt.Fprintln(sb, "|------|-----------|-------|-----|-------|---------------|----------|-----------|------|")
 	for _, row := range rows {
-		fmt.Fprintln(sb, row)
+		fmt.Fprintln(sb, row.line)
 	}
 	fmt.Fprintln(sb)
+}
+
+// unitPhase derives the phase label for a unit using its
+// Identity/Requirements/Techs. Each token is either a phase_* token
+// (used directly) or a non-phase tech whose own requirements map to
+// a phase (one-level lookup via Index). Multiple required techs take
+// the highest phase among them. Empty/missing requirements → Village.
+func unitPhase(u civdata.Entity, idx *tech.Index) civdata.Phase {
+	techs := u.Element.GetTokens("Identity/Requirements/Techs")
+	best := civdata.PhaseVillage
+	bestSet := false
+	for _, t := range techs {
+		if t == "" || strings.HasPrefix(t, "-") {
+			continue
+		}
+		var p civdata.Phase
+		switch {
+		case strings.HasPrefix(t, "phase_city"):
+			p = civdata.PhaseCity
+		case strings.HasPrefix(t, "phase_town"):
+			p = civdata.PhaseTown
+		case strings.HasPrefix(t, "phase_village"):
+			p = civdata.PhaseVillage
+		default:
+			// Non-phase tech: look up its own phase requirement.
+			if idx == nil {
+				continue
+			}
+			indexed := idx.Get(t)
+			if indexed == nil {
+				continue
+			}
+			raw := extractRawPhase(indexed.Requirements)
+			switch {
+			case strings.HasPrefix(raw, "phase_city"):
+				p = civdata.PhaseCity
+			case strings.HasPrefix(raw, "phase_town"):
+				p = civdata.PhaseTown
+			case strings.HasPrefix(raw, "phase_village"):
+				p = civdata.PhaseVillage
+			default:
+				continue
+			}
+		}
+		if !bestSet || p > best {
+			best = p
+			bestSet = true
+		}
+	}
+	return best
 }
 
 func collectTrainTokens(e *tmpl.Element) []string {
