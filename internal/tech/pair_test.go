@@ -27,9 +27,12 @@ func TestExpandPair_NotPair(t *testing.T) {
 	testutil.SkipIfNoGameData(t)
 
 	c := NewCatalog(filepath.Join(testutil.GameDataRoot(), "simulation", "data", "technologies"))
-	_, _, ok := ExpandPair(c, "phase_town")
+	top, bottom, ok := ExpandPair(c, "phase_town")
 	if ok {
 		t.Error("ExpandPair returned ok=true for non-pair tech, want false")
+	}
+	if top != nil || bottom != nil {
+		t.Errorf("ExpandPair returned non-nil top/bottom for non-pair tech: top=%v bottom=%v", top, bottom)
 	}
 }
 
