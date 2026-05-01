@@ -237,6 +237,18 @@ func (g *Generator) renderResearches(sb *strings.Builder, civCode string, b civd
 				t = ct
 			}
 		}
+
+		// Phase-fallback: tokens of the form "phase_X_<civCode>" come from shared
+		// civic_centre templates with {civ} substituted. When a civ-specific variant
+		// does not exist (e.g. phase_town_germ.json is absent), strip the suffix and
+		// resolve the abstract name (e.g. "phase_town") so we get the generic tech.
+		if t == nil && g.Index != nil &&
+			strings.HasPrefix(tok, "phase_") &&
+			strings.HasSuffix(tok, "_"+civCode) {
+			stripped := strings.TrimSuffix(tok, "_"+civCode)
+			t = g.Index.ResolveForCiv(stripped, civCode)
+		}
+
 		if t == nil {
 			rows = append(rows, researchRow{
 				phase: "—",

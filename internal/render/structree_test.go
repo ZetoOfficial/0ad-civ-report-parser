@@ -153,6 +153,33 @@ func TestOverview_Germ_HasCivSpecificTechs(t *testing.T) {
 	}
 }
 
+func TestStructree_Germ_NoPhaseTokenLeak(t *testing.T) {
+	skipIfNoGamedata(t)
+	out := generateFor(t, "germ")
+	forbidden := []string{
+		"phase_town_germ",
+		"phase_city_germ",
+	}
+	for _, name := range forbidden {
+		if strings.Contains(out.Structree, name) {
+			t.Errorf("germ structree leaks raw phase token %q (should resolve to generic)", name)
+		}
+	}
+}
+
+func TestStructree_Athen_PhaseTokenResolvesCivVariant(t *testing.T) {
+	skipIfNoGamedata(t)
+	out := generateFor(t, "athen")
+	// For athen, phase_town_athen.json EXISTS and should be displayed
+	// by display name (Town Phase / Kōmopolis), not by raw token.
+	if strings.Contains(out.Structree, "| phase_town_athen |") {
+		t.Errorf("athen structree shows raw phase_town_athen token instead of display name")
+	}
+	if strings.Contains(out.Structree, "| phase_town_germ |") {
+		t.Error("athen structree should not contain phase_town_germ token (other civ)")
+	}
+}
+
 // generateFor builds a full Output for the named civ using real gamedata.
 func generateFor(t *testing.T, civ string) Output {
 	t.Helper()
