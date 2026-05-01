@@ -229,3 +229,29 @@ func (c *Catalog) AllNotCiv(civ string) ([]*Technology, error) {
 	})
 	return out, err
 }
+
+// LoadAll walks Catalog.dir recursively, parses every *.json into
+// cache. Idempotent. Used by Index to avoid duplicating WalkDir.
+func (c *Catalog) LoadAll() error {
+	return filepath.WalkDir(c.dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".json") {
+			return nil
+		}
+		t, err := Load(path)
+		if err != nil {
+			return err
+		}
+		if _, ok := c.cache[t.Name]; !ok {
+			c.cache[t.Name] = t
+		}
+		return nil
+	})
+}
+
+// AllLoaded returns the cache map. Caller must not mutate.
+func (c *Catalog) AllLoaded() map[string]*Technology {
+	return c.cache
+}
