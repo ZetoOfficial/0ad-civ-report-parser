@@ -46,6 +46,60 @@ func TestModification_AffectsList_Absent(t *testing.T) {
 	}
 }
 
+func TestAllowsCiv(t *testing.T) {
+	cases := []struct {
+		name string
+		req  Requirements
+		civ  string
+		want bool
+	}{
+		{"empty", nil, "germ", true},
+		{"top_civ_match", Requirements{"civ": "germ"}, "germ", true},
+		{"top_civ_mismatch", Requirements{"civ": "rome"}, "germ", false},
+		{"top_notciv_block", Requirements{"notciv": []any{"germ"}}, "germ", false},
+		{"top_notciv_pass", Requirements{"notciv": []any{"rome"}}, "germ", true},
+		{"all_with_civ_block", Requirements{"all": []any{
+			map[string]any{"tech": "phase_town"},
+			map[string]any{"civ": "rome"},
+		}}, "germ", false},
+		{"all_with_civ_pass", Requirements{"all": []any{
+			map[string]any{"tech": "phase_town"},
+			map[string]any{"civ": "germ"},
+		}}, "germ", true},
+		{"any_civ_match", Requirements{"any": []any{
+			map[string]any{"civ": "athen"},
+			map[string]any{"civ": "germ"},
+		}}, "germ", true},
+		{"any_civ_no_match", Requirements{"any": []any{
+			map[string]any{"civ": "athen"},
+			map[string]any{"civ": "spart"},
+		}}, "germ", false},
+		{"all_with_any_inner_block", Requirements{"all": []any{
+			map[string]any{"tech": "phase_village"},
+			map[string]any{"any": []any{
+				map[string]any{"civ": "kush"},
+				map[string]any{"civ": "maur"},
+				map[string]any{"civ": "pers"},
+			}},
+		}}, "germ", false},
+		{"all_with_any_inner_pass", Requirements{"all": []any{
+			map[string]any{"tech": "phase_village"},
+			map[string]any{"any": []any{
+				map[string]any{"civ": "kush"},
+				map[string]any{"civ": "germ"},
+			}},
+		}}, "germ", true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := AllowsCiv(c.req, c.civ)
+			if got != c.want {
+				t.Errorf("AllowsCiv(%v, %q) = %v, want %v", c.req, c.civ, got, c.want)
+			}
+		})
+	}
+}
+
 func TestCatalog_LoadAll_Idempotent(t *testing.T) {
 	testutil.SkipIfNoGameData(t)
 	c := NewCatalog(filepath.Join(testutil.GameDataRoot(), "simulation/data/technologies"))

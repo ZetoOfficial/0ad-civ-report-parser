@@ -58,6 +58,8 @@ func (g *Generator) Generate(civInfo civdata.CivCode) (Output, error) {
 	if err != nil {
 		return Output{}, err
 	}
+	// civSpecific covers root technologies/ files with civ-lock too, not just civbonuses/.
+	civSpecific := g.Index.CivSpecific(civInfo.Code)
 	notciv, err := g.Catalog.AllNotCiv(civInfo.Code)
 	if err != nil {
 		return Output{}, err
@@ -80,7 +82,7 @@ func (g *Generator) Generate(civInfo civdata.CivCode) (Output, error) {
 	}
 
 	return Output{
-		Overview:  g.renderOverview(civInfo, civ, player, teamBonus, bonuses, notciv, units, buildings, heroAuras),
+		Overview:  g.renderOverview(civInfo, civ, player, teamBonus, bonuses, civSpecific, notciv, units, buildings, heroAuras),
 		Structree: g.renderStructree(civInfo.Code, res, heroAuras, catafalqueAuras),
 	}, nil
 }

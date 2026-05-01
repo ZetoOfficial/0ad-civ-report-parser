@@ -207,6 +207,9 @@ func (g *Generator) renderResearches(sb *strings.Builder, civCode string, b civd
 		// Try pair expansion first.
 		if top, bot, ok := tech.ExpandPair(g.Catalog, tok); ok {
 			for _, t := range []*tech.Technology{top, bot} {
+				if !tech.AllowsCiv(t.Requirements, civCode) {
+					continue
+				}
 				if _, dup := seen[t.Name]; dup {
 					continue
 				}
@@ -228,6 +231,10 @@ func (g *Generator) renderResearches(sb *strings.Builder, civCode string, b civd
 		}
 		if t == nil {
 			rows = append(rows, fmt.Sprintf("| %s | — | — | — | (не найдено) |", escapeTable(tok)))
+			continue
+		}
+		// Skip technologies not available to this civ.
+		if !tech.AllowsCiv(t.Requirements, civCode) {
 			continue
 		}
 		if _, dup := seen[t.Name]; dup {

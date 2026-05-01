@@ -80,6 +80,29 @@ func TestIndex_Get_Literal(t *testing.T) {
 	}
 }
 
+func TestIndex_CivSpecific_Germ(t *testing.T) {
+	idx := newTestIndex(t)
+
+	list := idx.CivSpecific("germ")
+	names := map[string]bool{}
+	for _, tt := range list {
+		names[tt.Name] = true
+	}
+
+	// Files in civbonuses/ should be present.
+	for _, expected := range []string{"germ_meat", "germ_women"} {
+		if !names[expected] {
+			t.Errorf("CivSpecific(germ) missing civbonuses entry %q", expected)
+		}
+	}
+	// Files in root with all→civ:germ should also be present.
+	for _, expected := range []string{"resettlement", "grove_of_fetters"} {
+		if !names[expected] {
+			t.Errorf("CivSpecific(germ) missing root entry %q", expected)
+		}
+	}
+}
+
 func TestIndex_Chain_PhaseTown_ReplacedByContains(t *testing.T) {
 	idx := newTestIndex(t)
 	ci := idx.Chain("phase_town")

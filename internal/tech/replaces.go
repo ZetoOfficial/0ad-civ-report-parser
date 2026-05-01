@@ -6,6 +6,23 @@ import (
 	"sort"
 )
 
+// CivSpecific returns all technologies that are exclusive to the given civ
+// according to their requirements (RequiresCiv check). Includes both root
+// technologies/ files and civbonuses/, since the Index loaded the entire tree
+// via Catalog.LoadAll.
+//
+// Sorted by Name for deterministic output.
+func (i *Index) CivSpecific(civ string) []*Technology {
+	out := []*Technology{}
+	for _, t := range i.techs {
+		if RequiresCiv(t.Requirements) == civ {
+			out = append(out, t)
+		}
+	}
+	sort.Slice(out, func(a, b int) bool { return out[a].Name < out[b].Name })
+	return out
+}
+
 // Index holds the replaces/supersedes graph over all technologies in a Catalog.
 type Index struct {
 	techs        map[string]*Technology // basename → tech (alias of Catalog cache)

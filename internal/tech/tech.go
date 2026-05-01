@@ -170,6 +170,83 @@ func RequiresCiv(req Requirements) string {
 	return ""
 }
 
+// AllowsCiv reports whether civ is permitted by the requirements tree.
+// Handles arbitrary nesting of all/any with civ/notciv leaves.
+//
+// Semantics:
+//   - {"civ": X}      → allowed iff civ == X
+//   - {"notciv": [...]} → allowed iff civ ∉ list
+//   - {"all": [...]}  → all children must allow
+//   - {"any": [...]}  → at least one child must allow
+//   - other keys (tech, entity, …) → not a civ filter, allowed
+//   - empty/nil       → allowed
+//
+// Note: a single Requirements map can mix multiple keys (e.g. top-level
+// {"tech": "...", "civ": "..."}). All keys are treated as implicit AND.
+func AllowsCiv(req Requirements, civ string) bool {
+	if req == nil {
+		return true
+	}
+	for k, v := range req {
+		switch k {
+		case "civ":
+			if s, ok := v.(string); ok && s != civ {
+				return false
+			}
+		case "notciv":
+			for _, blocked := range parseStringList(v) {
+				if blocked == civ {
+					return false
+				}
+			}
+		case "all":
+			if list, ok := v.([]any); ok {
+				for _, item := range list {
+					if m, ok := item.(map[string]any); ok {
+						if !AllowsCiv(Requirements(m), civ) {
+							return false
+						}
+					}
+				}
+			}
+		case "any":
+			if list, ok := v.([]any); ok {
+				anyOk := false
+				for _, item := range list {
+					if m, ok := item.(map[string]any); ok {
+						if AllowsCiv(Requirements(m), civ) {
+							anyOk = true
+							break
+						}
+					}
+				}
+				if !anyOk {
+					return false
+				}
+			}
+		// tech/entity/… ignored — not a civ filter
+		}
+	}
+	return true
+}
+
+// parseStringList coerces v to a []string for notciv handling.
+func parseStringList(v any) []string {
+	switch x := v.(type) {
+	case string:
+		return []string{x}
+	case []any:
+		out := make([]string, 0, len(x))
+		for _, e := range x {
+			if s, ok := e.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
 func NotCivList(req Requirements) []string {
 	out := []string{}
 	if req == nil {

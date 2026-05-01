@@ -49,6 +49,28 @@ func TestStructree_Athen_PhaseTownAthen(t *testing.T) {
 	}
 }
 
+func TestStructree_Germ_NoForeignTechs(t *testing.T) {
+	skipIfNoGamedata(t)
+	out := generateFor(t, "germ")
+	forbidden := []string{"Roman Roads", "Hoplite Tradition", "Archery Tradition", "Hellenistic Metropolis"}
+	for _, name := range forbidden {
+		if strings.Contains(out.Structree, name) {
+			t.Errorf("germ structree must NOT contain %q (civ-blocked tech)", name)
+		}
+	}
+}
+
+func TestOverview_Germ_HasCivSpecificTechs(t *testing.T) {
+	skipIfNoGamedata(t)
+	out := generateFor(t, "germ")
+	expected := []string{"Migratory Resettlement", "Grove of Fetters"}
+	for _, name := range expected {
+		if !strings.Contains(out.Overview, name) {
+			t.Errorf("germ overview must contain unique tech %q", name)
+		}
+	}
+}
+
 // generateFor builds a full Output for the named civ using real gamedata.
 func generateFor(t *testing.T, civ string) Output {
 	t.Helper()
