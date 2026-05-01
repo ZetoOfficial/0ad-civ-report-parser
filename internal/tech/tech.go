@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -219,11 +221,8 @@ func (c *Catalog) AllNotCiv(civ string) ([]*Technology, error) {
 		if err != nil {
 			return err
 		}
-		for _, blocked := range NotCivList(t.Requirements) {
-			if blocked == civ {
-				out = append(out, t)
-				return nil
-			}
+		if slices.Contains(NotCivList(t.Requirements), civ) {
+			out = append(out, t)
 		}
 		return nil
 	})
@@ -251,7 +250,9 @@ func (c *Catalog) LoadAll() error {
 	})
 }
 
-// AllLoaded returns the cache map. Caller must not mutate.
+// AllLoaded returns a shallow clone of the cache map. The caller may mutate
+// the returned map (add/delete keys) without affecting the catalog cache.
+// Note: *Technology pointers are shared — do not mutate the pointed-to structs.
 func (c *Catalog) AllLoaded() map[string]*Technology {
-	return c.cache
+	return maps.Clone(c.cache)
 }

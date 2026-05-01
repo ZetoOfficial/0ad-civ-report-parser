@@ -2,6 +2,7 @@ package tech
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 )
 
@@ -44,23 +45,13 @@ func NewIndex(c *Catalog) (*Index, error) {
 					idx.supersededBy[t.Supersedes] = t.Name
 				}
 				idx.Warnings = append(idx.Warnings,
-					fmt.Sprintf("multiple supersedes for %q: %s, %s", t.Supersedes, existing, t.Name))
+					fmt.Sprintf("multiple supersedes for %q: %s vs %s", t.Supersedes, t.Name, existing))
 			} else {
 				idx.supersededBy[t.Supersedes] = t.Name
 			}
 		}
 	}
 	// Sort and deduplicate each slice for determinism.
-	sortDedup := func(ss []string) []string {
-		sort.Strings(ss)
-		out := ss[:0]
-		for i, s := range ss {
-			if i == 0 || s != ss[i-1] {
-				out = append(out, s)
-			}
-		}
-		return out
-	}
 	for k := range idx.replacedBy {
 		idx.replacedBy[k] = sortDedup(idx.replacedBy[k])
 	}
@@ -84,11 +75,28 @@ func (i *Index) Chain(name string) ChainInfo {
 	return out
 }
 
+// sortDedup sorts ss in place and returns a deduplicated slice.
+func sortDedup(ss []string) []string {
+	sort.Strings(ss)
+	out := ss[:0]
+	for i, s := range ss {
+		if i == 0 || s != ss[i-1] {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 // civAffinity returns the single civ a technology is specific to.
 // It checks requirements.civ first; if empty, falls back to specificName:
 // a single-key specificName map is treated as civ affinity (e.g.
 // specificName: {"athen": "..."} → "athen"). Multi-key maps indicate
 // a generic tech and return "".
+//
+// Note: phase_town_athen.json (and similar civ-variant phase techs)
+// express civ-affinity via a single-key specificName map rather than
+// requirements.civ; the fallback here is necessary because those files
+// use requirements.entity for the phase gate instead.
 func civAffinity(t *Technology) string {
 	if civ := RequiresCiv(t.Requirements); civ != "" {
 		return civ
@@ -132,14 +140,7 @@ func (i *Index) ResolveForCiv(name, civ string) *Technology {
 		if civAffinity(t) != "" {
 			continue // already for another civ
 		}
-		blocked := false
-		for _, nc := range NotCivList(t.Requirements) {
-			if nc == civ {
-				blocked = true
-				break
-			}
-		}
-		if !blocked {
+		if !slices.Contains(NotCivList(t.Requirements), civ) {
 			generic = append(generic, t)
 		}
 	}
