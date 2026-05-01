@@ -258,26 +258,6 @@ func (g *Generator) renderResearches(sb *strings.Builder, civCode string, b civd
 	fmt.Fprintln(sb)
 }
 
-func formatTechCost(c tech.Cost) string {
-	parts := []string{}
-	if c.Food != 0 {
-		parts = append(parts, fmt.Sprintf("%d %s", c.Food, i18n.ResourceName("food")))
-	}
-	if c.Wood != 0 {
-		parts = append(parts, fmt.Sprintf("%d %s", c.Wood, i18n.ResourceName("wood")))
-	}
-	if c.Stone != 0 {
-		parts = append(parts, fmt.Sprintf("%d %s", c.Stone, i18n.ResourceName("stone")))
-	}
-	if c.Metal != 0 {
-		parts = append(parts, fmt.Sprintf("%d %s", c.Metal, i18n.ResourceName("metal")))
-	}
-	if len(parts) == 0 {
-		return "—"
-	}
-	return strings.Join(parts, ", ")
-}
-
 // requirementPhase extracts the phase label from a tech requirement.
 // idx is used for civ-variant phase tech resolution; may be nil (legacy mode).
 func requirementPhase(t *tech.Technology, civ string, idx *tech.Index) string {
