@@ -105,18 +105,30 @@ func (p Phase) RU() string {
 }
 
 func BuildingPhase(e Entity) Phase {
+	// R28 format: Identity/Requirements/Techs (tokens-list after merge).
+	techs := e.Element.GetTokens("Identity/Requirements/Techs")
+	for _, t := range techs {
+		if t == "" || strings.HasPrefix(t, "-") {
+			continue
+		}
+		switch {
+		case strings.HasPrefix(t, "phase_city"):
+			return PhaseCity
+		case strings.HasPrefix(t, "phase_town"):
+			return PhaseTown
+		case strings.HasPrefix(t, "phase_village"):
+			return PhaseVillage
+		}
+	}
+	// Legacy fallback for any old-format templates with Identity/RequiredTechnology.
 	req := e.Element.GetText("Identity/RequiredTechnology")
-	switch req {
-	case "phase_town", "phase_town_generic", "phase_town_athen", "phase_town_brit", "phase_town_cart", "phase_town_gaul", "phase_town_germ", "phase_town_han", "phase_town_iber", "phase_town_kush", "phase_town_mace", "phase_town_maur", "phase_town_pers", "phase_town_ptol", "phase_town_rome", "phase_town_sele", "phase_town_spart":
-		return PhaseTown
-	case "phase_city", "phase_city_generic", "phase_city_athen", "phase_city_brit", "phase_city_cart", "phase_city_gaul", "phase_city_germ", "phase_city_han", "phase_city_iber", "phase_city_kush", "phase_city_mace", "phase_city_maur", "phase_city_pers", "phase_city_ptol", "phase_city_rome", "phase_city_sele", "phase_city_spart":
+	switch {
+	case strings.HasPrefix(req, "phase_city"):
 		return PhaseCity
-	}
-	if strings.HasPrefix(req, "phase_town") {
+	case strings.HasPrefix(req, "phase_town"):
 		return PhaseTown
-	}
-	if strings.HasPrefix(req, "phase_city") {
-		return PhaseCity
+	case strings.HasPrefix(req, "phase_village"):
+		return PhaseVillage
 	}
 	return PhaseVillage
 }

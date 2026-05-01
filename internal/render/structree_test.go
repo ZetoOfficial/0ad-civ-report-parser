@@ -180,6 +180,35 @@ func TestStructree_Athen_PhaseTokenResolvesCivVariant(t *testing.T) {
 	}
 }
 
+func TestStructree_Germ_TownAndCityNotEmpty(t *testing.T) {
+	skipIfNoGamedata(t)
+	out := generateFor(t, "germ")
+	// Bug fix: BuildingPhase used to read Identity/RequiredTechnology
+	// (which doesn't exist in R28 data), so all buildings collapsed to
+	// Village. Now reads Identity/Requirements/Techs.
+	if strings.Contains(out.Structree, "## TOWN PHASE\n\n*В этой фазе нет уникальных построек.*") {
+		t.Error("germ TOWN PHASE block is empty (BuildingPhase regression)")
+	}
+	if strings.Contains(out.Structree, "## CITY PHASE\n\n*В этой фазе нет уникальных построек.*") {
+		t.Error("germ CITY PHASE block is empty (BuildingPhase regression)")
+	}
+	// Sanity: Great Hall must be in TOWN PHASE block, not VILLAGE.
+	townStart := strings.Index(out.Structree, "## TOWN PHASE")
+	cityStart := strings.Index(out.Structree, "## CITY PHASE")
+	villageStart := strings.Index(out.Structree, "## VILLAGE PHASE")
+	if townStart < 0 || cityStart < 0 || villageStart < 0 {
+		t.Fatal("missing phase headers")
+	}
+	townSection := out.Structree[townStart:cityStart]
+	if !strings.Contains(townSection, "Great Hall") {
+		t.Error("Great Hall expected in TOWN PHASE block of germ structree")
+	}
+	villageSection := out.Structree[villageStart:townStart]
+	if strings.Contains(villageSection, "Great Hall") {
+		t.Error("Great Hall must NOT be in VILLAGE PHASE block")
+	}
+}
+
 // generateFor builds a full Output for the named civ using real gamedata.
 func generateFor(t *testing.T, civ string) Output {
 	t.Helper()
