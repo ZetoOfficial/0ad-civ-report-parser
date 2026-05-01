@@ -2,6 +2,7 @@ package render
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/aura"
@@ -197,7 +198,7 @@ func (g *Generator) renderResearches(sb *strings.Builder, civCode string, b civd
 
 	// Render, deduplicating by resolved tech name.
 	seen := map[string]struct{}{}
-	var rows []string
+	var rows []researchRow
 
 	for _, tok := range cleaned {
 		// Substitute {civ}/{native} placeholders so that tokens like
@@ -214,7 +215,14 @@ func (g *Generator) renderResearches(sb *strings.Builder, civCode string, b civd
 					continue
 				}
 				seen[t.Name] = struct{}{}
-				rows = append(rows, formatPairRow(t, g.Index, civCode))
+				phase := requirementPhase(t, civCode, g.Index)
+				name := i18n.TechDisplayName(t, civCode)
+				rows = append(rows, researchRow{
+					phase: phase,
+					rank:  phaseRank(phase),
+					name:  name,
+					line:  formatPairRow(t, g.Index, civCode),
+				})
 			}
 			continue
 		}
@@ -230,7 +238,12 @@ func (g *Generator) renderResearches(sb *strings.Builder, civCode string, b civd
 			}
 		}
 		if t == nil {
-			rows = append(rows, fmt.Sprintf("| %s | — | — | — | (не найдено) |", escapeTable(tok)))
+			rows = append(rows, researchRow{
+				phase: "—",
+				rank:  3,
+				name:  tok,
+				line:  fmt.Sprintf("| %s | — | — | — | (не найдено) |", escapeTable(tok)),
+			})
 			continue
 		}
 		// Skip technologies not available to this civ.
@@ -241,19 +254,33 @@ func (g *Generator) renderResearches(sb *strings.Builder, civCode string, b civd
 			continue
 		}
 		seen[t.Name] = struct{}{}
-		rows = append(rows, formatTechRow(t, g.Index, civCode))
+		phase := requirementPhase(t, civCode, g.Index)
+		name := i18n.TechDisplayName(t, civCode)
+		rows = append(rows, researchRow{
+			phase: phase,
+			rank:  phaseRank(phase),
+			name:  name,
+			line:  formatTechRow(t, g.Index, civCode),
+		})
 	}
 
 	if len(rows) == 0 {
 		return
 	}
 
+	sort.SliceStable(rows, func(i, j int) bool {
+		if rows[i].rank != rows[j].rank {
+			return rows[i].rank < rows[j].rank
+		}
+		return rows[i].name < rows[j].name
+	})
+
 	fmt.Fprintln(sb, "#### Исследует")
 	fmt.Fprintln(sb)
 	fmt.Fprintln(sb, "| Технология | Стоимость | Время | Фаза | Эффект |")
 	fmt.Fprintln(sb, "|-----------|-----------|-------|------|--------|")
 	for _, row := range rows {
-		fmt.Fprintln(sb, row)
+		fmt.Fprintln(sb, row.line)
 	}
 	fmt.Fprintln(sb)
 }
@@ -344,4 +371,27 @@ func phaseLabelFromSupersedes(s string) string {
 		return "City"
 	}
 	return ""
+}
+
+// phaseRank returns the sort key for a phase label. Lower = earlier phase.
+// Unknown labels (including "—") sort last.
+func phaseRank(label string) int {
+	switch label {
+	case "Village":
+		return 0
+	case "Town":
+		return 1
+	case "City":
+		return 2
+	}
+	return 3
+}
+
+// researchRow holds pre-rendered data for a single research table row,
+// used to sort rows by phase before emitting them.
+type researchRow struct {
+	phase string
+	rank  int
+	name  string // display name for stable secondary sort
+	line  string // pre-rendered markdown row
 }

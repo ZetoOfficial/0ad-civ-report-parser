@@ -8,6 +8,88 @@ import (
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/paths"
 )
 
+func TestPhaseRank(t *testing.T) {
+	cases := []struct {
+		label string
+		want  int
+	}{
+		{"Village", 0},
+		{"Town", 1},
+		{"City", 2},
+		{"—", 3},
+		{"", 3},
+		{"Unknown", 3},
+	}
+	for _, c := range cases {
+		t.Run(c.label, func(t *testing.T) {
+			if got := phaseRank(c.label); got != c.want {
+				t.Errorf("phaseRank(%q) = %d, want %d", c.label, got, c.want)
+			}
+		})
+	}
+}
+
+func TestStructree_Germ_ResearchSortedByPhase(t *testing.T) {
+	skipIfNoGamedata(t)
+	out := generateFor(t, "germ")
+
+	// Split on "#### Исследует" blocks; skip first chunk (pre-header text).
+	blocks := strings.Split(out.Structree, "#### Исследует")
+	if len(blocks) < 2 {
+		t.Fatal("no #### Исследует blocks found in germ structree")
+	}
+
+	violated := false
+	for i, block := range blocks[1:] {
+		// Trim the block to its content before the next header or separator.
+		cut := block
+		for _, sep := range []string{"\n#", "\n---"} {
+			if idx := strings.Index(cut, sep); idx != -1 {
+				cut = cut[:idx]
+			}
+		}
+
+		// Extract the phase column (4th pipe-delimited column) from each data row.
+		var phases []string
+		for _, line := range strings.Split(cut, "\n") {
+			line = strings.TrimSpace(line)
+			if !strings.HasPrefix(line, "|") {
+				continue
+			}
+			// Skip separator rows and the header row.
+			if strings.HasPrefix(line, "|---") || strings.Contains(line, "| Технология |") {
+				continue
+			}
+			cols := strings.Split(line, "|")
+			// cols[0]="", cols[1]=name, cols[2]=cost, cols[3]=time, cols[4]=phase, cols[5]=effect, cols[6]=""
+			if len(cols) < 6 {
+				continue
+			}
+			phase := strings.TrimSpace(cols[4])
+			if phase == "" {
+				continue
+			}
+			phases = append(phases, phase)
+		}
+
+		// Verify that phase ranks are non-decreasing within the block.
+		prev := -1
+		for j, p := range phases {
+			r := phaseRank(p)
+			if r < prev {
+				t.Errorf("block %d row %d: phase %q (rank %d) appears after rank %d", i, j, p, r, prev)
+				violated = true
+			}
+			if r > prev {
+				prev = r
+			}
+		}
+	}
+	if !violated {
+		t.Logf("all #### Исследует blocks in germ structree are sorted by phase")
+	}
+}
+
 func TestStructree_Germ_TwoWallSets(t *testing.T) {
 	skipIfNoGamedata(t)
 	out := generateFor(t, "germ")
