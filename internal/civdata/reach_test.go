@@ -2,6 +2,7 @@ package civdata
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -128,6 +129,24 @@ func TestReach_Idempotent(t *testing.T) {
 	if len(res1.Techs) != len(res2.Techs) {
 		t.Errorf("Techs: %d vs %d", len(res1.Techs), len(res2.Techs))
 	}
+
+	// Same-instance call must yield identical counts (cache idempotency).
+	res3, err := Reach(civ, idx1, resolver1, catalog1)
+	if err != nil {
+		t.Fatalf("Reach (same instance, third call): %v", err)
+	}
+	if len(res3.Buildings) != len(res1.Buildings) {
+		t.Errorf("same-instance Buildings differs: first=%d third=%d",
+			len(res1.Buildings), len(res3.Buildings))
+	}
+	if len(res3.Units) != len(res1.Units) {
+		t.Errorf("same-instance Units differs: first=%d third=%d",
+			len(res1.Units), len(res3.Units))
+	}
+	if len(res3.Techs) != len(res1.Techs) {
+		t.Errorf("same-instance Techs differs: first=%d third=%d",
+			len(res1.Techs), len(res3.Techs))
+	}
 }
 
 // sortedKeys returns the keys of a string-keyed map in sorted order,
@@ -137,11 +156,6 @@ func sortedKeys(m map[string]struct{}) []string {
 	for k := range m {
 		keys = append(keys, k)
 	}
-	// Simple insertion sort — only used in test error output.
-	for i := 1; i < len(keys); i++ {
-		for j := i; j > 0 && keys[j] < keys[j-1]; j-- {
-			keys[j], keys[j-1] = keys[j-1], keys[j]
-		}
-	}
+	slices.Sort(keys)
 	return keys
 }

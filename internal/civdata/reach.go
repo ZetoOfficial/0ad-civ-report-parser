@@ -42,9 +42,10 @@ type ReachResult struct {
 }
 
 // Reach computes the transitive closure from civ.StartEntities via
-// Trainer/Builder/ProductionQueue Entities & Technologies and
-// WallSet/Templates children. Pair-techs are expanded at scan time;
-// the wrapper itself is NOT placed in res.Techs. Idempotent.
+// Trainer/Builder/ProductionQueue Entities, Trainer/ProductionQueue/
+// Researcher Technologies, and WallSet/Templates children. Pair-techs
+// are expanded at scan time; the wrapper itself is NOT placed in
+// res.Techs. Idempotent.
 func Reach(civ *Civ, idx *tmpl.Index, resolver *tmpl.Resolver, catalog *tech.Catalog) (*ReachResult, error) {
 	seen := map[string]struct{}{}  // resolved template tokens
 	seenT := map[string]struct{}{} // tech names (separate namespace)
@@ -144,6 +145,9 @@ func Reach(civ *Civ, idx *tmpl.Index, resolver *tmpl.Resolver, catalog *tech.Cat
 				continue
 			}
 
+			// Only pair wrappers have both Top and Bottom set; sub-techs that
+			// carry a back-pointer (t.Pair != "") arriving directly in a tech
+			// list are handled as plain techs.
 			if techRec.Top != "" && techRec.Bottom != "" {
 				top, bot, ok := tech.ExpandPair(catalog, t)
 				if !ok {
