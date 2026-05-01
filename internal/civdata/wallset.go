@@ -64,10 +64,20 @@ func IdentifyWallSets(buildings []Entity, civCode string) (groups []*WallSetGrou
 			tok := tmpl.SubstCiv(tokenRaw, civCode)
 			// Pieces missing from byID are silently skipped: Reach already
 			// reported them via res.Skipped, so no extra logging is needed.
-			if piece, ok := byID[tok]; ok {
-				g.Pieces = append(g.Pieces, WallPiece{Role: role, Entity: piece})
-				removeIDs[piece.TemplateID] = struct{}{}
+			piece, ok := byID[tok]
+			if !ok {
+				continue
 			}
+			// Skip standalone production buildings that happen to be referenced
+			// as wallset pieces (e.g. rome's army_camp is the <Fort> of
+			// wallset_siege but is a Castra military building that trains
+			// legionaries). Detect via Trainer/ProductionQueue presence —
+			// genuine wall pieces (segments, towers, gates) have neither.
+			if hasOwnProduction(piece) {
+				continue
+			}
+			g.Pieces = append(g.Pieces, WallPiece{Role: role, Entity: piece})
+			removeIDs[piece.TemplateID] = struct{}{}
 		}
 
 		groups = append(groups, g)
@@ -92,4 +102,23 @@ func IdentifyWallSets(buildings []Entity, civCode string) (groups []*WallSetGrou
 	}
 
 	return groups, filtered
+}
+
+// hasOwnProduction reports whether the entity has any non-empty production
+// component (Trainer/Entities, Trainer/Technologies, ProductionQueue/Entities,
+// ProductionQueue/Technologies, or Researcher/Technologies). Used to detect
+// standalone production buildings that may be referenced as wallset pieces.
+func hasOwnProduction(e Entity) bool {
+	for _, path := range []string{
+		"Trainer/Entities",
+		"Trainer/Technologies",
+		"ProductionQueue/Entities",
+		"ProductionQueue/Technologies",
+		"Researcher/Technologies",
+	} {
+		if len(e.Element.GetTokens(path)) > 0 {
+			return true
+		}
+	}
+	return false
 }

@@ -112,6 +112,26 @@ func Reach(civ *Civ, idx *tmpl.Index, resolver *tmpl.Resolver, catalog *tech.Cat
 					}
 				}
 			}
+
+			// Promotion/Entity: rank chain (e.g. infantry_swordsman_b → _a → _e
+			// → infantry_legionary). Without this edge, late-rank-only units
+			// like Roman Legionary stay unreachable, and any entities they
+			// build (army_camp) are missed too.
+			if v := strings.TrimSpace(el.GetText("Promotion/Entity")); v != "" {
+				queueE = append(queueE, v)
+			}
+
+			// Upgrade/<variant>/Entity: building/unit transformations. Each
+			// named child of <Upgrade> is a variant with its own <Entity>
+			// pointing to the upgraded form (e.g. encampment → encampment_fortified,
+			// elite swordsman → centurion).
+			if up := el.Get("Upgrade"); up != nil {
+				for _, variant := range up.Children {
+					if v := strings.TrimSpace(variant.GetText("Entity")); v != "" {
+						queueE = append(queueE, v)
+					}
+				}
+			}
 		}
 
 		for len(queueT) > 0 {

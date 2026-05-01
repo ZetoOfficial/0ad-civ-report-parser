@@ -180,6 +180,18 @@ func TestStructree_Athen_PhaseTokenResolvesCivVariant(t *testing.T) {
 	}
 }
 
+func TestStructree_Rome_HasArmyCamp(t *testing.T) {
+	skipIfNoGamedata(t)
+	out := generateFor(t, "rome")
+	// Army Camp is reachable only via the Promotion chain
+	// (swordsman_b → _a → _e → legionary → builds army_camp). It is also
+	// referenced as the <Fort> piece of wallset_siege but must appear as
+	// a standalone TOWN-phase building because it has its own Trainer.
+	if !strings.Contains(out.Structree, "Army Camp") && !strings.Contains(out.Structree, "Castra") {
+		t.Error("rome structree missing Army Camp / Castra (Promotion edge or wallset-piece filter regression)")
+	}
+}
+
 func TestStructree_Germ_TownAndCityNotEmpty(t *testing.T) {
 	skipIfNoGamedata(t)
 	out := generateFor(t, "germ")
