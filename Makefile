@@ -65,6 +65,7 @@ test:
 	$(GO) test ./...
 
 clean:
+	rm -rf out/
 	rm -f *_overview.md *_structree.md common.md
 	rm -f *_buildings_report.md
 	rm -rf $(BIN_DIR)

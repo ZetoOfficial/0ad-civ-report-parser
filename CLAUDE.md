@@ -239,15 +239,15 @@ testdata/
 make build                          # → bin/civreport
 go build -o civreport ./cmd/civreport
 
-# Один отчёт
-make spart                          # → spartans_overview.md + spartans_structree.md
+# Один отчёт (по умолчанию в out/)
+make spart                          # → out/spartans_overview.md + out/spartans_structree.md
 make civ CIV=спарт                  # через алиас
 ./bin/civreport spart
-./bin/civreport --out-dir /tmp spart  # оба файла в /tmp/
+./bin/civreport --out-dir /tmp spart  # переопределить каталог
 
 # Все цивы (плюс общий common.md)
 make all-civs
-./bin/civreport --all                # → 15×2 файлов + common.md
+./bin/civreport --all                # → out/15×2 файлов + out/common.md
 
 # Smoke-тест без записи файлов
 make check
@@ -282,6 +282,6 @@ make clean                          # удаляет *_overview.md, *_structree.
   "lang": "",
   "include_history": false,
   "include_icons": false,
-  "out_dir": "."
+  "out_dir": "out"
 }
 ```

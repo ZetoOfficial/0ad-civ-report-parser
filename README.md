@@ -39,7 +39,7 @@ civreport --include-history spart
 ### Флаги
 
 - `--gamedata <path>` — путь к `mods/public` (переопределяет `OAD_GAMEDATA_ROOT` и `config.json`).
-- `--out-dir <path>` — каталог вывода (по умолчанию из конфига или `.`).
+- `--out-dir <path>` — каталог вывода (по умолчанию `out/`, создаётся при необходимости).
 - `--config <path>` — путь к JSON-конфигу.
 - `--include-history` — добавляет блок «Историческая справка» в `<civ>_overview.md` из `Identity/History` Player-шаблона. По умолчанию выключено.
 - `--lang ru` — gettext-перевод (не реализовано до эпика 5).
@@ -51,7 +51,7 @@ civreport --include-history spart
 ```json
 {
   "gamedata": "/Users/zeto/Projects/study/0ad/binaries/data/mods/public",
-  "out_dir": ".",
+  "out_dir": "out",
   "lang": "",
   "include_history": false,
   "include_icons": false
