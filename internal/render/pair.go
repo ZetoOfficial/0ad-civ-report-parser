@@ -16,7 +16,7 @@ func formatTechRow(t *tech.Technology, idx *tech.Index, civ string) string {
 		escapeTable(name), escapeTable(suffix),
 		formatTechCost(t.Cost),
 		formatTechTime(t),
-		requirementPhase(t.Requirements, civ, idx),
+		requirementPhase(t, civ, idx),
 		escapeTable(formatTechEffect(t)),
 	)
 }
@@ -30,7 +30,7 @@ func formatPairRow(t *tech.Technology, idx *tech.Index, civ string) string {
 		escapeTable(name), escapeTable(suffix),
 		formatTechCost(t.Cost),
 		formatTechTime(t),
-		requirementPhase(t.Requirements, civ, idx),
+		requirementPhase(t, civ, idx),
 		escapeTable(formatTechEffect(t)),
 	)
 }
@@ -50,12 +50,11 @@ func chainSuffix(idx *tech.Index, t *tech.Technology, civ string) string {
 		parts = append(parts, fmt.Sprintf("апгрейд от %s", ch.Supersedes))
 	}
 	// ReplacedBy: only mention if the active tech for civ differs from t.
-	for range ch.ReplacedBy {
+	if len(ch.ReplacedBy) > 0 {
 		active := idx.ResolveForCiv(t.Name, civ)
 		if active != nil && active.Name != t.Name {
 			parts = append(parts, fmt.Sprintf("заменяется на: %s", active.Name))
 		}
-		break // one mention is enough
 	}
 	if ch.SupersededBy != "" {
 		parts = append(parts, fmt.Sprintf("апгрейдится в: %s", ch.SupersededBy))

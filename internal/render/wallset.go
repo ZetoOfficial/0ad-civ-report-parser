@@ -12,8 +12,21 @@ import (
 func (g *Generator) renderWallSetBlock(sb *strings.Builder, civCode string, ws *civdata.WallSetGroup) {
 	_ = civCode // reserved for future civ-specific overrides
 
-	// Header: "### Стены: <GenericName> (<SpecificName>)" or just the generic.
-	name := FormatGenericName(ws.Wrapper.Element)
+	// Header: "### Стены: <SpecificName> (<GenericName>)" — spec requires specific first.
+	var name string
+	if ws.Wrapper.Element != nil {
+		generic := strings.TrimSpace(ws.Wrapper.Element.GetText("Identity/GenericName"))
+		specific := strings.TrimSpace(ws.Wrapper.Element.GetText("Identity/SpecificName"))
+		if specific != "" {
+			if generic != "" && generic != specific {
+				name = fmt.Sprintf("%s (%s)", specific, generic)
+			} else {
+				name = specific
+			}
+		} else {
+			name = generic
+		}
+	}
 	if name == "" {
 		name = ws.Wrapper.Basename()
 	}

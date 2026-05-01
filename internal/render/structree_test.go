@@ -36,6 +36,12 @@ func TestStructree_Athen_PhaseTownAthen(t *testing.T) {
 	if strings.Contains(out.Structree, "phase_town_generic") {
 		t.Errorf("athen structree must not include phase_town_generic")
 	}
+	// Phase column for phase_town_athen must resolve to "Town" via Supersedes fallback,
+	// not fall back to "—" (which happens when requirements.entity is used instead of
+	// requirements.tech).
+	if !strings.Contains(out.Structree, "Town") {
+		t.Errorf("athen structree missing Town label for phase_town_athen (Supersedes fallback not working)")
+	}
 }
 
 // generateFor builds a full Output for the named civ using real gamedata.

@@ -280,14 +280,30 @@ func formatTechCost(c tech.Cost) string {
 
 // requirementPhase extracts the phase label from a tech requirement.
 // idx is used for civ-variant phase tech resolution; may be nil (legacy mode).
-func requirementPhase(req tech.Requirements, civ string, idx *tech.Index) string {
+func requirementPhase(t *tech.Technology, civ string, idx *tech.Index) string {
+	if t == nil {
+		return "—"
+	}
+	req := t.Requirements
 	if req == nil {
+		// Fallback: derive phase from t.Supersedes chain when no explicit requirement.
+		if idx != nil && t.Supersedes != "" {
+			if lbl := phaseLabelFromSupersedes(t.Supersedes); lbl != "" {
+				return lbl
+			}
+		}
 		return "—"
 	}
 
 	raw := extractRawPhase(req)
 
 	if raw == "" {
+		// No tech/all-tech requirement found — try Supersedes-based fallback.
+		if idx != nil && t.Supersedes != "" {
+			if lbl := phaseLabelFromSupersedes(t.Supersedes); lbl != "" {
+				return lbl
+			}
+		}
 		return "—"
 	}
 
