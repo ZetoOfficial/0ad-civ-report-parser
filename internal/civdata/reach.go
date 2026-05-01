@@ -22,7 +22,7 @@ type ReachResult struct {
 	Buildings []Entity
 	Units     []Entity
 	Techs     map[string]*tech.Technology // pair wrappers are expanded into top+bottom
-	WallSets  []*WallSetGroup             // populated by IdentifyWallSets (Task 4)
+	WallSets  []*WallSetGroup             // populated by IdentifyWallSets at the end of Reach
 	Skipped   []SkipNote
 }
 
@@ -91,6 +91,9 @@ func Reach(civ *Civ, idx *tmpl.Index, resolver *tmpl.Resolver, catalog *tech.Cat
 			for _, t := range el.GetTokens("ProductionQueue/Entities") {
 				queueE = append(queueE, t)
 			}
+			// Tech sources: spec lists Trainer/ProductionQueue Technologies, but
+			// R28 actually stores researchable techs under Researcher/Technologies.
+			// All three paths are scanned for completeness.
 			for _, t := range el.GetTokens("Trainer/Technologies") {
 				queueT = append(queueT, t)
 			}

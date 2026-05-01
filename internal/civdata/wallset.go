@@ -28,6 +28,9 @@ type WallSetGroup struct {
 // civCode is needed because piece references in shared wrapper templates
 // (e.g. structures/wallset_palisade.xml) contain {civ}-placeholders that
 // must be substituted before lookup.
+//
+// Invariant: groups are returned sorted by BuildingSortKey(Wrapper) for
+// deterministic rendering. Callers must not re-sort.
 func IdentifyWallSets(buildings []Entity, civCode string) (groups []*WallSetGroup, filtered []Entity) {
 	// Build lookup map by TemplateID.
 	byID := make(map[string]Entity, len(buildings))

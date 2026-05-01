@@ -2,7 +2,6 @@ package render
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/aura"
@@ -57,8 +56,9 @@ func (g *Generator) renderPhases(sb *strings.Builder, civCode string, res *civda
 	}
 }
 
-// filterWallSetsByPhase returns wallsets belonging to the given phase,
-// sorted by BuildingSortKey of their wrapper entity.
+// filterWallSetsByPhase returns wallsets belonging to the given phase.
+// The order is preserved from the input slice, which IdentifyWallSets already
+// sorts by BuildingSortKey(Wrapper) for deterministic rendering.
 func filterWallSetsByPhase(wallsets []*civdata.WallSetGroup, phase civdata.Phase) []*civdata.WallSetGroup {
 	var out []*civdata.WallSetGroup
 	for _, ws := range wallsets {
@@ -66,14 +66,6 @@ func filterWallSetsByPhase(wallsets []*civdata.WallSetGroup, phase civdata.Phase
 			out = append(out, ws)
 		}
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		ai, _ := civdata.BuildingSortKey(out[i].Wrapper)
-		aj, _ := civdata.BuildingSortKey(out[j].Wrapper)
-		if ai != aj {
-			return ai < aj
-		}
-		return out[i].Wrapper.Basename() < out[j].Wrapper.Basename()
-	})
 	return out
 }
 
@@ -179,7 +171,8 @@ func collectTrainTokens(e *tmpl.Element) []string {
 // It collects techs from three paths (Researcher, Trainer, ProductionQueue),
 // deduplicates, and renders each row using Index-aware pair expansion.
 func (g *Generator) renderResearches(sb *strings.Builder, civCode string, b civdata.Entity) {
-	// Collect from all three source paths.
+	// Tech sources: Researcher/Technologies is where R28 stores researchable
+	// techs; Trainer/ProductionQueue Technologies retained for compatibility.
 	var rawTokens []string
 	for _, path := range []string{
 		"Researcher/Technologies",
