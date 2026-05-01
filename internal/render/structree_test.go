@@ -42,6 +42,11 @@ func TestStructree_Athen_PhaseTownAthen(t *testing.T) {
 	if !strings.Contains(out.Structree, "Town") {
 		t.Errorf("athen structree missing Town label for phase_town_athen (Supersedes fallback not working)")
 	}
+	// Regression: chainSuffix должен показывать generic "Town Phase" в "заменяет",
+	// а НЕ civ-локальный "Town Phase (локально: Kōmopolis)".
+	if strings.Contains(out.Structree, "заменяет: Town Phase (локально:") {
+		t.Errorf("athen structree shows self-referential display in chainSuffix (заменяет должен быть generic)")
+	}
 }
 
 // generateFor builds a full Output for the named civ using real gamedata.

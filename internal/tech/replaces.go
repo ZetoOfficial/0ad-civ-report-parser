@@ -109,6 +109,13 @@ func civAffinity(t *Technology) string {
 	return ""
 }
 
+// Get returns the Technology with the given name, or nil if not indexed.
+// Unlike ResolveForCiv, Get does NOT resolve civ-specific replacements —
+// it returns the literal tech for the given name.
+func (i *Index) Get(name string) *Technology {
+	return i.techs[name]
+}
+
 // ResolveForCiv returns the technology that replaces name for the given civ.
 // Returns idx.techs[name] (possibly nil) if no replacement applies.
 //

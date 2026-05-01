@@ -62,6 +62,24 @@ func TestIndex_Chain_PhaseTownAthen(t *testing.T) {
 	}
 }
 
+func TestIndex_Get_Literal(t *testing.T) {
+	idx := newTestIndex(t)
+
+	// Get returns literal tech, NOT civ-resolved.
+	got := idx.Get("phase_town")
+	if got == nil {
+		t.Fatal("Get(phase_town) returned nil")
+	}
+	if got.Name != "phase_town" {
+		t.Errorf("Get(phase_town).Name = %q, want %q", got.Name, "phase_town")
+	}
+
+	// Unknown name returns nil.
+	if idx.Get("no_such_tech_xxx") != nil {
+		t.Error("Get(no_such_tech_xxx) should return nil")
+	}
+}
+
 func TestIndex_Chain_PhaseTown_ReplacedByContains(t *testing.T) {
 	idx := newTestIndex(t)
 	ci := idx.Chain("phase_town")

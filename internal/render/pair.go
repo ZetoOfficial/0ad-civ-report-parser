@@ -58,13 +58,14 @@ func formatPairRow(t *tech.Technology, idx *tech.Index, civ string) string {
 }
 
 // displayNameByName resolves a technology name to a human-readable label
-// using the Index. Prefers civ-specific display names via ResolveForCiv,
-// then falls back to the raw name.
+// using the Index. Uses literal (non-civ-resolved) lookup so that chain
+// entries like Replaces/Supersedes show the generic name (e.g. "Town Phase")
+// rather than the civ-specific replacement ("Town Phase (локально: Kōmopolis)").
 func displayNameByName(idx *tech.Index, name, civ string) string {
 	if idx == nil || name == "" {
 		return name
 	}
-	if t := idx.ResolveForCiv(name, civ); t != nil {
+	if t := idx.Get(name); t != nil {
 		return i18n.TechDisplayName(t, civ)
 	}
 	return name
