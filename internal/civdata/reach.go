@@ -16,21 +16,6 @@ type SkipNote struct {
 	Reason string
 }
 
-// WallSetGroup groups a wallset wrapper entity with its piece entities.
-// Populated by IdentifyWallSets (Task 4); declared here to establish the
-// final type shape.
-type WallSetGroup struct {
-	Wrapper Entity
-	Pieces  []WallPiece
-	Phase   Phase
-}
-
-// WallPiece is a single piece of a wallset (gate, long wall, tower, etc.).
-type WallPiece struct {
-	Role   string
-	Entity Entity
-}
-
 // ReachResult holds the transitive closure of buildings, units, techs and
 // wallsets reachable from a civilization's StartEntities.
 type ReachResult struct {
@@ -163,6 +148,7 @@ func Reach(civ *Civ, idx *tmpl.Index, resolver *tmpl.Resolver, catalog *tech.Cat
 		}
 	}
 
+	res.WallSets, res.Buildings = IdentifyWallSets(res.Buildings, civ.Code)
 	return res, nil
 }
 

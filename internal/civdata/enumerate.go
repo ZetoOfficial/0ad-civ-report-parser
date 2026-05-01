@@ -29,46 +29,6 @@ func (e Entity) HasClass(name string) bool {
 	return false
 }
 
-func loadDir(dir, civCode string, resolver *tmpl.Resolver) ([]Entity, error) {
-	matches, err := filepath.Glob(filepath.Join(dir, "*.xml"))
-	if err != nil {
-		return nil, err
-	}
-	sort.Strings(matches)
-	out := make([]Entity, 0, len(matches))
-	for _, m := range matches {
-		el, err := resolver.Resolve(m)
-		if err != nil {
-			return nil, err
-		}
-		base := strings.TrimSuffix(filepath.Base(m), ".xml")
-		out = append(out, Entity{
-			TemplateID: kindFromDir(dir) + "/" + civCode + "/" + base,
-			Path:       m,
-			Element:    el,
-		})
-	}
-	return out, nil
-}
-
-func kindFromDir(dir string) string {
-	switch filepath.Base(filepath.Dir(dir)) {
-	case "structures":
-		return "structures"
-	case "units":
-		return "units"
-	}
-	return filepath.Base(filepath.Dir(dir))
-}
-
-func Buildings(structuresDir, civCode string, resolver *tmpl.Resolver) ([]Entity, error) {
-	return loadDir(structuresDir, civCode, resolver)
-}
-
-func Units(unitsDir, civCode string, resolver *tmpl.Resolver) ([]Entity, error) {
-	return loadDir(unitsDir, civCode, resolver)
-}
-
 func IsHero(e Entity) bool {
 	if strings.HasPrefix(e.Basename(), "hero_") {
 		return true

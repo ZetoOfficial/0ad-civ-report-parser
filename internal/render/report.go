@@ -41,14 +41,12 @@ func (g *Generator) Generate(civInfo civdata.CivCode) (Output, error) {
 	if err != nil {
 		return Output{}, err
 	}
-	buildings, err := civdata.Buildings(g.Layout.StructuresOf(civInfo.Code), civInfo.Code, g.Resolver)
+	res, err := civdata.Reach(civ, g.Resolver.Index, g.Resolver, g.Catalog)
 	if err != nil {
 		return Output{}, err
 	}
-	units, err := civdata.Units(g.Layout.UnitsOf(civInfo.Code), civInfo.Code, g.Resolver)
-	if err != nil {
-		return Output{}, err
-	}
+	buildings := res.Buildings
+	units := res.Units
 	bonuses, err := g.Catalog.AllCivBonuses(civInfo.Code)
 	if err != nil {
 		return Output{}, err

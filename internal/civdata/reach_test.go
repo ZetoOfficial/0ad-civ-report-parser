@@ -45,15 +45,13 @@ func TestReach_Spart(t *testing.T) {
 		t.Errorf("Buildings count = %d; want >= 10", len(res.Buildings))
 	}
 
-	// Expected building basenames
+	// Expected building basenames (wallset wrappers and pieces are now in WallSets,
+	// not Buildings — after IdentifyWallSets is applied in Reach).
 	requiredBuildings := []string{
 		"civil_centre",
 		"wonder",
 		"barracks",
 		"forge",
-		"wallset_stone",
-		"wallset_palisade",
-		"wall_tower",
 	}
 	buildingBasenames := make(map[string]struct{}, len(res.Buildings))
 	for _, b := range res.Buildings {
@@ -62,6 +60,14 @@ func TestReach_Spart(t *testing.T) {
 	for _, want := range requiredBuildings {
 		if _, ok := buildingBasenames[want]; !ok {
 			t.Errorf("Buildings: missing %q; got basenames: %v", want, sortedKeys(buildingBasenames))
+		}
+	}
+
+	// Wallset wrappers and pieces must NOT appear in Buildings.
+	wallsetRelated := []string{"wallset_stone", "wallset_palisade", "wall_tower", "wall_gate", "wall_short", "wall_medium", "wall_long"}
+	for _, banned := range wallsetRelated {
+		if _, ok := buildingBasenames[banned]; ok {
+			t.Errorf("Buildings: %q should have been moved to WallSets, still in Buildings", banned)
 		}
 	}
 
