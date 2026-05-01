@@ -50,9 +50,20 @@
   `TeamBonuses`, `WallSets`, `StartEntities`, `SkirmishReplacements`,
   `SelectableInGameSetup`, `AINames`. Поля `Emblem`, `Name`, `History`,
   `Region`, `Music` **не парсятся**.
-- **Перечисление зданий и юнитов.** Файл: `enumerate.go`.
-  - `Buildings(dir, civ, resolver)` — `filepath.Glob("structures/{civ}/*.xml")`.
-  - `Units(dir, civ, resolver)` — то же для юнитов.
+- **Транзитивное замыкание от StartEntities.** Файл: `reach.go`.
+  `Reach(civ, idx, resolver, catalog)` — единственный источник истины
+  достижимых зданий/юнитов/техов. Идёт от `StartEntities` цивы по рёбрам
+  `Trainer/Entities`, `Builder/Entities`, `Researcher/Technologies` до
+  fixed point. `ReachResult` содержит `Buildings`, `Units`, `Techs`,
+  `WallSets`, `Skipped` (для отладки). `SkipNote{Token, Reason}` —
+  диагностическая запись пропущенного шаблона.
+  `Buildings()`/`Units()` glob-функции **удалены**.
+- **Группировка WallSet.** Файл: `wallset.go`.
+  `IdentifyWallSets(buildings, civCode)` — выделяет wallset-обёртки и
+  их pieces из общего списка зданий. Возвращает `[]*WallSetGroup`,
+  каждый с `Name`, `WrapperEl`, `Pieces []WallPiece`. Wallset-обёртки
+  и составные части исключаются из `ReachResult.Buildings`.
+- **Перечисление/классификация юнитов.** Файл: `enumerate.go`.
   - Классификаторы по basename: `IsHero`, `IsChampion`, `IsSupport`,
     `IsShip`, `IsSiege`, `IsCatafalque`, `IsHealer`.
   - Группировка по фазам через `Identity/RequiredTechnology` (захардкожен
@@ -62,9 +73,10 @@
 
 **Тесты:** `codes_test.go`. Проверяют резолюцию `spart`, `спартанцы`,
 `German`, `Germans`, `Афиняне`, `Han`, `карфагеняне`, неизвестная строка,
-пустая строка.
+пустая строка. `reach_test.go`, `wallset_test.go` — интеграционные тесты
+с реальными данными 0ad (пропускаются если данные недоступны).
 
-### Технологии (`internal/tech/tech.go`)
+### Технологии (`internal/tech/`)
 
 - **Структура `Technology`.** Поля: `GenericName`, `Description`,
   `SpecificName` (`map[string]any`), `AutoResearch`, `Cost`, `ResearchTime`,
@@ -74,6 +86,9 @@
   отсутствуют.
 - **`Catalog.ByName(name)`** — лениво подгружает один JSON по имени, ищет
   в корне `technologies/` и в `civbonuses/`. Кеш в памяти.
+- **`Catalog.LoadAll()`** — загружает все технологии разом (рекурсивный
+  обход `technologies/`). **`Catalog.AllLoaded()`** — срез всех
+  загруженных техов (нужен для построения `Index`).
 - **`Catalog.AllCivBonuses(civ)`** — сканирует `civbonuses/`, фильтрует
   по `RequiresCiv(req)`. Возвращает только техи с `requirements.civ == civ`.
 - **`Catalog.AllNotCiv(civ)`** — сканирует все `technologies/*.json`
@@ -82,6 +97,15 @@
   обёрнутые в `all`/`any`).
 - **`RequiresCiv(req)`** — извлекает `civ` из верхнего уровня или из
   первого вложения в `all`.
+- **`ExpandPair(catalog, name)`** (файл: `pair.go`) — разворачивает
+  pair-обёртку в два отдельных теха (`top`, `bottom`). Если `name` не
+  является pair-техом, возвращает `ok=false`.
+- **`NewIndex(catalog)`** (файл: `replaces.go`) — строит граф
+  replaces/supersedes по всем техам (`Catalog.LoadAll` + `AllLoaded`).
+  Методы: `Index.ResolveForCiv(name, civ)` — возвращает civ-специфичный
+  вариант теха (или generic); `Index.Chain(name)` — возвращает `ChainInfo`
+  со списками `Supersedes`, `Replaces`, `SupersededBy`, `ReplacedBy` для
+  построения chain-суффикса. `Index.Warnings` — диагностика дублей.
 
 ### Авры (`internal/aura/aura.go`)
 
@@ -109,17 +133,23 @@
 ### Рендер (`internal/render/`)
 
 - **`Generator`** в `report.go` — единая точка входа `Generate(civInfo)`.
-  Загружает civ JSON, здания, юниты, бонусы, blacklist, ауры героев и
-  катафалка; вызывает методы рендера по очереди.
+  Использует `civdata.Reach(...)` как единственный источник списков
+  зданий/юнитов/техов. Поле `Generator.Index *tech.Index` лениво
+  строится при первом вызове `Generate` через `tech.NewIndex(catalog)`.
 - **`renderHeader`** — заголовок и инфо-блок.
 - **`renderOverview`** — код, культура, стартовые юниты, командный бонус,
   таблица цивилизационных бонусов (объединение `civ.CivBonuses` и
   `AllCivBonuses`), список `notciv`-blacklist.
 - **`renderPhases`** — три блока (`VILLAGE`/`TOWN`/`CITY`), каждый с
-  отсортированными зданиями.
+  отсортированными зданиями. Wallset выводится отдельным блоком `### Стены`
+  с 7-колоночной таблицей pieces через `renderWallSetBlock` (`wallset.go`).
 - **`renderBuilding`** — таблица параметров здания + подтаблицы «Тренирует»
-  (фильтрует юниты, которых нет в `units/{civ}/`) и «Исследует» (с подгрузкой
-  каждого тех-JSON через `Catalog.ByName`).
+  и «Исследует». В «Исследует»: pair-технологии разворачиваются в две строки
+  с маркером `◐ — парная (выбрать одно)` (`pair.go`); каждая строка теха
+  содержит chain-суффикс «(заменяет: X; апгрейд от Y; ...)» через
+  `chainSuffix`. Фаза в колонке «Фаза» резолвится через
+  `requirementPhase(t, civ, idx)` с поддержкой `Index.ResolveForCiv`
+  для civ-вариантов фаз (Афины → `phase_town_athen`, Персы → `phase_town_pers`).
 - **`renderUnitsDetail`** — приложение, классификация юнитов на 10 групп.
   Для героев — таблица аур по basename hero-файла и токенам в `Auras`.
   Для катафалка — таблица аур из `auras/units/catafalques/`.
@@ -150,7 +180,7 @@
 ```
        вход                                          выход
        ─────                                         ─────
-   civreport spart                              spartans_buildings_report.md
+   civreport spart                    spartans_overview.md + spartans_structree.md
         │                                                ▲
         ▼                                                │
    ┌──────────────────┐                                  │
@@ -167,10 +197,10 @@
    ┌────────┴──────────────────────────────────────┐     │
    │ Загрузка данных:                              │     │
    │  ├─ civdata.LoadCiv(civs/{code}.json)         │     │
-   │  ├─ civdata.Buildings(structures/{civ}/*.xml) │  →  │ → renderHeader
-   │  │   └─ tmpl.Resolver.Resolve(path)           │  →  │ → renderOverview
-   │  │       └─ parser → index → merge            │  →  │ → renderPhases
-   │  ├─ civdata.Units(units/{civ}/*.xml)          │  →  │ → renderUnitsDetail
+   │  ├─ civdata.Reach(civ, idx, resolver, catalog)│  →  │ → renderHeader
+   │  │   └─ transitive closure from StartEntities │  →  │ → renderOverview
+   │  │       └─ Buildings/Units/WallSets/Techs    │  →  │ → renderPhases
+   │  │                                            │  →  │ → renderUnitsDetail
    │  ├─ tech.Catalog.AllCivBonuses(civ)           │  →  │ → renderSummary
    │  ├─ tech.Catalog.AllNotCiv(civ)               │     │
    │  ├─ aura.ListInDir(auras/.../heroes/...)      │     │
@@ -194,27 +224,19 @@
 
 ### Покрыто, но обрезано
 
-- **Таблица «Исследует» под зданием.** Если тех ссылается на парный
-  (`pair_*`-файл), показывается строка с пустыми полями (нет cost/tooltip
-  в самом pair-файле, top/bottom не разворачиваются).
-- **Колонка «Фаза» в таблице техов.** Парсится только `req.tech` и первый
-  `tech` в `req.all`. Сложные конструкции (`req.entity`, `req.any`) → «—».
+- **Колонка «Фаза» в таблице техов.** `requirementPhase` теперь
+  поддерживает `req.entity` (через `Index.ResolveForCiv`) и первый
+  `tech` в `req.all`. Конструкция `req.any` и смешанные ветки
+  `all(tech+notciv)` → «—».
 - **Авры героев.** Матчатся либо по basename hero-файла (`hero_leonidas` →
   `spart_hero_leonidas_*`), либо по токенам в `<Auras>` шаблона. Авры
   зданий (Wonder, Temple) — не выводятся.
-- **Подтаблицы «Тренирует».** Фильтрация: если токен после `{civ}`-
-  подстановки не находится в `units/{civ}/`, строка пропускается. Это
-  правильно для «мёртвых» шаблонов, но также скрывает юнитов, которых
-  можно было бы построить через цепочку (если бы их XML лежали где-то
-  вне `units/{civ}/`).
 
 ### Не покрыто
 
-- **Парные технологии** (`pair_*.json`) — формально не разворачиваются;
-  поля `Top`/`Bottom`/`Pair` в `tech.Technology` есть, но рендер их не
-  использует.
 - **Глобальные `autoResearch`-техи** (`unit_advanced.json`, `unit_elite.json`)
-  — не сканируются, в отчёт не попадают.
+  — не сканируются в отчёт как самостоятельные строки (описание в
+  `common.md` есть, но к таблицам юнитов не привязано).
 - **Player-bound auras** (`auras/players/`, `auras/teambonuses/`) — не
   загружаются.
 - **Авры зданий** (`auras/structures/`) — не загружаются и не
@@ -224,13 +246,6 @@
   не парсятся.
 - **`SkirmishReplacements`** — поле парсится, но не применяется (вход в
   отчёт берётся из шаблонов цивы, не из skirmish-вариантов).
-- **WallSet** — отдельные `wall_short`/`wall_medium`/`wall_long`/`wall_gate`/
-  `wall_tower` рендерятся как самостоятельные здания, без группировки в
-  один блок «стены».
-- **Транзитивное замыкание от StartEntities** — игра в `gui/reference/`
-  идёт от стартовых сущностей через `Trainer`/`Builder`/`Trainer/Technologies`.
-  У нас — `filepath.Glob` по папке цивы. Различия для большинства цив
-  минимальны, но не нулевые.
 - **Бонусы атаки** (`Bonuses/Bonus*` в `<Attack>`) — `+2.5× vs Cavalry`
   у копейщиков и т.п. не рендерятся.
 - **Splash damage**, **capture details**, **status effects** в атаке —
@@ -245,8 +260,6 @@
   — нет.
 - **Capture resistance**, **Status effect resistance** — не рендерятся.
 - **`specificName`** технологий и фаз — не используется при рендере.
-- **`supersedes`/`replaces`/`replacedBy`** — храним частично (Replaces
-  вообще нет), при рендере не используем.
 - **`requirementsTooltip`** на технологиях — не парсится и не показывается.
 
 ### Не покрыто тестами

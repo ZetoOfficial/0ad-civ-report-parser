@@ -107,10 +107,16 @@ internal/civdata/                  цивилизации, перечислен�
   ├── codes.go                     таблица 15 цив + русские/английские алиасы
   ├── civ.go                       парсинг civs/{code}.json (Culture как string|array)
   ├── player.go                    парсинг Player-шаблона (Identity/History/Icon/GenericName)
-  └── enumerate.go                 glob structures/units, классификация юнитов, фазы
+  ├── enumerate.go                 классификация юнитов, фазы (Buildings/Units glob УДАЛЕНЫ)
+  ├── reach.go                     Reach(civ, idx, resolver, catalog) → ReachResult; единственный
+  │                                источник достижимых buildings/units/techs от StartEntities
+  └── wallset.go                   IdentifyWallSets(buildings, civCode) → []*WallSetGroup; WallPiece
 internal/tech/
-  ├── tech.go                      технологии: загрузка JSON, AllCivBonuses, AllNotCiv
+  ├── tech.go                      технологии: загрузка JSON, AllCivBonuses, AllNotCiv,
+  │                                LoadAll(), AllLoaded()
   ├── auto.go                      глобальные autoResearch (unit_advanced/elite)
+  ├── pair.go                      ExpandPair(catalog, name) → top, bottom, ok
+  ├── replaces.go                  NewIndex(catalog), Index{Chain, ResolveForCiv}, ChainInfo
   └── requirements.go              парсинг entity/all/any/notciv с человеко-описанием
 internal/aura/
   ├── aura.go                      авры: hero/catafalque/structure (только список)
@@ -121,8 +127,11 @@ internal/i18n/                     русские термины + перево�
   └── tech_name.go                 TechDisplayName — человекочитаемые имена технологий
 internal/render/                   рендер markdown
   ├── format.go                    форматтеры одного поля (FormatCost, FormatHP, ...)
-  ├── report.go                    Generator, Generate(), header/overview/phases
+  ├── report.go                    Generator (+Index *tech.Index), Generate(), header/overview/phases
   ├── overview.go                  рендер блоков для overview-вкладки
+  ├── structree.go                 рендер фаз через Reach + WallSet + Pair
+  ├── pair.go                      formatTechRow/formatPairRow; chainSuffix; ◐-маркер парных техов
+  ├── wallset.go                   renderWallSetBlock; 7-колоночная таблица стен; roleLabel
   ├── common.go                    рендер common.md
   ├── common_data.go               данные для common.md (авто-эффекты, damage, resources)
   ├── units.go                     приложение по юнитам, ауры героев/катафалка
@@ -144,19 +153,15 @@ internal/paths/                    без изменений
 internal/tmpl/                     без изменений
 internal/civdata/
   ├── codes.go                     без изменений
-  ├── civ.go                       + парсинг Player-шаблона (Identity/History/Icon/GenericName)
-  ├── reach.go                     NEW: транзитивное замыкание от StartEntities
-  │                                (заменяет тупой filepath.Glob; разворачивает pair_*,
-  │                                группирует WallSet)
-  └── wallset.go                   NEW: группировка кусков стены по WallSet/Templates
+  ├── civ.go                       без изменений (Player-шаблон читается через player.go)
+  ├── reach.go                     реализовано в эпике 3
+  └── wallset.go                   реализовано в эпике 3
 internal/tech/
-  ├── tech.go                      + поля Affects на Modification, RequirementsTooltip,
-  │                                Replaces (массив)
+  ├── tech.go                      + поля RequirementsTooltip, Replaces (массив) — ещё не добавлены
   ├── notciv.go                    NEW: вынести из tech.go
-  ├── pair.go                      NEW: разворот pair_* в top/bottom
-  ├── auto.go                      NEW: глобальные autoResearch (unit_advanced/elite),
-  │                                отдельно от civbonuses
-  └── requirements.go              NEW: парсинг entity/all/any/notciv с человеко-описанием
+  ├── pair.go                      реализовано в эпике 3
+  ├── auto.go                      без изменений
+  └── requirements.go              без изменений
 internal/aura/
   ├── aura.go                      + структурированный рендер modifications
   └── teambonus.go                 NEW: загрузка auras/teambonuses/<civ>_player_teambonus
@@ -165,16 +170,15 @@ internal/i18n/
   ├── modifier.go                  + поддержка per-mod affects
   └── po.go                        NEW: загрузчик l10n/<lang>.public-*.po и lookup
 internal/render/
-  ├── skeleton_overview.tmpl       text/template для Civilization Overview
-  ├── skeleton_structree.tmpl      text/template для Structure Tree
-  ├── skeleton_common.tmpl         text/template для common.md
-  ├── skeleton.go                  загрузка и применение skeleton-шаблонов
+  ├── skeleton_overview.tmpl       text/template для Civilization Overview (NEW — эпик 4+)
+  ├── skeleton_structree.tmpl      text/template для Structure Tree (NEW — эпик 4+)
+  ├── skeleton_common.tmpl         text/template для common.md (NEW — эпик 4+)
+  ├── skeleton.go                  загрузка и применение skeleton-шаблонов (NEW — эпик 4+)
   ├── format.go                    форматтеры новых полей (Loot, Trickle, Turrets,
   │                                Projectiles, Splash, Bonuses, Healer, Run, Capture)
-  ├── overview.go                  рендер блоков для overview-вкладки
-  ├── structree.go                 рендер блоков для structree-вкладки
-  │                                (заменяет report.go/units.go/summary.go)
-  ├── common.go                    рендер common.md
+  ├── overview.go                  без изменений (уже реализовано)
+  ├── structree.go                 реализовано в эпике 3 (интеграция Reach+Pair+WallSet)
+  ├── common.go                    без изменений (уже реализовано)
   └── icons.go                     NEW: опциональная вставка ![alt](path) (эпик 5)
 testdata/
   ├── golden/                      эталоны (golden-тест на germ переписать под новый формат)
@@ -222,6 +226,11 @@ testdata/
   не использует случайность.
 - **После эпика 2**: overview содержит 7 секций + опц. History +
   footer-сноску; common.md наполнен (Advanced/Elite/Auto/Damage/Resources/Status).
+- **После эпика 3**: единственный источник истины достижимых сущностей —
+  `civdata.Reach(civ, idx, resolver, catalog)`. Старые `Buildings()`/`Units()`
+  glob-функции удалены. Pair-техи разворачиваются в две строки (`tech.ExpandPair`).
+  Граф replaces/supersedes строится через `tech.NewIndex`. WallSet группируется
+  через `civdata.IdentifyWallSets`.
 
 ## Команды
 
