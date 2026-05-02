@@ -2,6 +2,7 @@ package render
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/aura"
@@ -12,18 +13,17 @@ import (
 )
 
 // renderStructree returns the markdown body for the Structure Tree tab.
-// Epic 1: identical content to what the old report.go produced for
-// phases + units detail + summary. New sections in epic 4.
-func (g *Generator) renderStructree(civCode string, buildings, units []civdata.Entity, heroAuras, catafalqueAuras []*aura.Aura) string {
+func (g *Generator) renderStructree(civCode string, res *civdata.ReachResult,
+	heroAuras, catafalqueAuras []*aura.Aura) string {
 	var sb strings.Builder
-	g.renderPhases(&sb, civCode, buildings, units)
-	g.renderUnitsDetail(&sb, units, heroAuras, catafalqueAuras)
-	g.renderSummary(&sb, buildings)
+	g.renderPhases(&sb, civCode, res)
+	g.renderUnitsDetail(&sb, res.Units, heroAuras, catafalqueAuras)
+	g.renderSummary(&sb, res.Buildings)
 	return sb.String()
 }
 
-func (g *Generator) renderPhases(sb *strings.Builder, civCode string, buildings, units []civdata.Entity) {
-	groups := civdata.GroupByPhase(buildings)
+func (g *Generator) renderPhases(sb *strings.Builder, civCode string, res *civdata.ReachResult) {
+	groups := civdata.GroupByPhase(res.Buildings)
 	phases := []struct {
 		p     civdata.Phase
 		title string
@@ -32,11 +32,12 @@ func (g *Generator) renderPhases(sb *strings.Builder, civCode string, buildings,
 		{civdata.PhaseTown, "TOWN PHASE"},
 		{civdata.PhaseCity, "CITY PHASE"},
 	}
-	unitByID := indexUnits(civCode, units)
+	unitByID := indexUnits(civCode, res.Units)
 	for _, ph := range phases {
 		fmt.Fprintf(sb, "## %s\n\n", ph.title)
 		list := groups[ph.p]
-		if len(list) == 0 {
+		wallsetsHere := filterWallSetsByPhase(res.WallSets, ph.p)
+		if len(list) == 0 && len(wallsetsHere) == 0 {
 			fmt.Fprintln(sb, "*В этой фазе нет уникальных построек.*")
 			fmt.Fprintln(sb)
 			fmt.Fprintln(sb, "---")
@@ -48,7 +49,25 @@ func (g *Generator) renderPhases(sb *strings.Builder, civCode string, buildings,
 			fmt.Fprintln(sb, "---")
 			fmt.Fprintln(sb)
 		}
+		for _, ws := range wallsetsHere {
+			g.renderWallSetBlock(sb, civCode, ws)
+			fmt.Fprintln(sb, "---")
+			fmt.Fprintln(sb)
+		}
 	}
+}
+
+// filterWallSetsByPhase returns wallsets belonging to the given phase.
+// The order is preserved from the input slice, which IdentifyWallSets already
+// sorts by BuildingSortKey(Wrapper) for deterministic rendering.
+func filterWallSetsByPhase(wallsets []*civdata.WallSetGroup, phase civdata.Phase) []*civdata.WallSetGroup {
+	var out []*civdata.WallSetGroup
+	for _, ws := range wallsets {
+		if ws.Phase == phase {
+			out = append(out, ws)
+		}
+	}
+	return out
 }
 
 func indexUnits(civCode string, units []civdata.Entity) map[string]civdata.Entity {
@@ -81,8 +100,8 @@ func (g *Generator) renderBuilding(sb *strings.Builder, civCode string, b civdat
 	if t := FormatTerritory(b.Element); t != "" {
 		fmt.Fprintf(sb, "| Территория | %s |\n", t)
 	}
-	if g := FormatGarrison(b.Element); g != "" {
-		fmt.Fprintf(sb, "| Гарнизон | %s |\n", g)
+	if g2 := FormatGarrison(b.Element); g2 != "" {
+		fmt.Fprintf(sb, "| Гарнизон | %s |\n", g2)
 	}
 	if v := FormatVision(b.Element); v != "—" {
 		fmt.Fprintf(sb, "| Обзор | %s |\n", v)
@@ -90,7 +109,13 @@ func (g *Generator) renderBuilding(sb *strings.Builder, civCode string, b civdat
 	fmt.Fprintln(sb)
 
 	g.renderTrains(sb, civCode, b, unitByID)
-	g.renderResearches(sb, b)
+	g.renderResearches(sb, civCode, b)
+}
+
+type trainRow struct {
+	rank int
+	name string
+	line string
 }
 
 func (g *Generator) renderTrains(sb *strings.Builder, civCode string, b civdata.Entity, unitByID map[string]civdata.Entity) {
@@ -98,14 +123,24 @@ func (g *Generator) renderTrains(sb *strings.Builder, civCode string, b civdata.
 	if len(tokens) == 0 {
 		return
 	}
-	rows := []string{}
+	var rows []trainRow
+	seen := map[string]struct{}{}
 	for _, tok := range tokens {
 		expanded := tmpl.SubstCiv(tok, civCode)
 		u, ok := unitByID[expanded]
 		if !ok {
 			continue
 		}
-		row := fmt.Sprintf("| %s | %s | %s | %s | %s | %s | %s | %s |",
+		if _, dup := seen[u.TemplateID]; dup {
+			continue
+		}
+		seen[u.TemplateID] = struct{}{}
+		phase := unitPhase(u, g.Index)
+		phaseLabel := phase.RU()
+		if phaseLabel == "" {
+			phaseLabel = "—"
+		}
+		line := fmt.Sprintf("| %s | %s | %s | %s | %s | %s | %s | %s | %s |",
 			FormatGenericName(u.Element),
 			FormatCost(u.Element),
 			FormatBuildTime(u.Element),
@@ -114,20 +149,81 @@ func (g *Generator) renderTrains(sb *strings.Builder, civCode string, b civdata.
 			FormatArmorHPC(u.Element),
 			FormatWalkSpeed(u.Element),
 			FormatPopulation(u.Element),
+			phaseLabel,
 		)
-		rows = append(rows, row)
+		rows = append(rows, trainRow{
+			rank: phaseRank(phaseLabel),
+			name: FormatGenericName(u.Element),
+			line: line,
+		})
 	}
 	if len(rows) == 0 {
 		return
 	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		if rows[i].rank != rows[j].rank {
+			return rows[i].rank < rows[j].rank
+		}
+		return rows[i].name < rows[j].name
+	})
 	fmt.Fprintln(sb, "#### Тренирует")
 	fmt.Fprintln(sb)
-	fmt.Fprintln(sb, "| Юнит | Стоимость | Время | ОЗ | Атака | Броня (H/P/C) | Скорость | Население |")
-	fmt.Fprintln(sb, "|------|-----------|-------|-----|-------|---------------|----------|-----------|")
+	fmt.Fprintln(sb, "| Юнит | Стоимость | Время | ОЗ | Атака | Броня (H/P/C) | Скорость | Население | Фаза |")
+	fmt.Fprintln(sb, "|------|-----------|-------|-----|-------|---------------|----------|-----------|------|")
 	for _, row := range rows {
-		fmt.Fprintln(sb, row)
+		fmt.Fprintln(sb, row.line)
 	}
 	fmt.Fprintln(sb)
+}
+
+// unitPhase derives the phase label for a unit using its
+// Identity/Requirements/Techs. Each token is either a phase_* token
+// (used directly) or a non-phase tech whose own requirements map to
+// a phase (one-level lookup via Index). Multiple required techs take
+// the highest phase among them. Empty/missing requirements → Village.
+func unitPhase(u civdata.Entity, idx *tech.Index) civdata.Phase {
+	techs := u.Element.GetTokens("Identity/Requirements/Techs")
+	best := civdata.PhaseVillage
+	bestSet := false
+	for _, t := range techs {
+		if t == "" || strings.HasPrefix(t, "-") {
+			continue
+		}
+		var p civdata.Phase
+		switch {
+		case strings.HasPrefix(t, "phase_city"):
+			p = civdata.PhaseCity
+		case strings.HasPrefix(t, "phase_town"):
+			p = civdata.PhaseTown
+		case strings.HasPrefix(t, "phase_village"):
+			p = civdata.PhaseVillage
+		default:
+			// Non-phase tech: look up its own phase requirement.
+			if idx == nil {
+				continue
+			}
+			indexed := idx.Get(t)
+			if indexed == nil {
+				continue
+			}
+			raw := extractRawPhase(indexed.Requirements)
+			switch {
+			case strings.HasPrefix(raw, "phase_city"):
+				p = civdata.PhaseCity
+			case strings.HasPrefix(raw, "phase_town"):
+				p = civdata.PhaseTown
+			case strings.HasPrefix(raw, "phase_village"):
+				p = civdata.PhaseVillage
+			default:
+				continue
+			}
+		}
+		if !bestSet || p > best {
+			best = p
+			bestSet = true
+		}
+	}
+	return best
 }
 
 func collectTrainTokens(e *tmpl.Element) []string {
@@ -149,16 +245,24 @@ func collectTrainTokens(e *tmpl.Element) []string {
 	return out
 }
 
-func (g *Generator) renderResearches(sb *strings.Builder, b civdata.Entity) {
-	tokens := []string{}
-	if t := b.Element.GetTokens("Trainer/Technologies"); len(t) > 0 {
-		tokens = append(tokens, t...)
+// renderResearches writes the "#### Исследует" sub-table for a building.
+// It collects techs from three paths (Researcher, Trainer, ProductionQueue),
+// deduplicates, and renders each row using Index-aware pair expansion.
+func (g *Generator) renderResearches(sb *strings.Builder, civCode string, b civdata.Entity) {
+	// Tech sources: Researcher/Technologies is where R28 stores researchable
+	// techs; Trainer/ProductionQueue Technologies retained for compatibility.
+	var rawTokens []string
+	for _, path := range []string{
+		"Researcher/Technologies",
+		"Trainer/Technologies",
+		"ProductionQueue/Technologies",
+	} {
+		rawTokens = append(rawTokens, b.Element.GetTokens(path)...)
 	}
-	if t := b.Element.GetTokens("ProductionQueue/Technologies"); len(t) > 0 {
-		tokens = append(tokens, t...)
-	}
-	cleaned := []string{}
-	for _, t := range tokens {
+
+	// Filter empty / removal tokens.
+	var cleaned []string
+	for _, t := range rawTokens {
 		t = strings.TrimSpace(t)
 		if t == "" || strings.HasPrefix(t, "-") {
 			continue
@@ -168,62 +272,165 @@ func (g *Generator) renderResearches(sb *strings.Builder, b civdata.Entity) {
 	if len(cleaned) == 0 {
 		return
 	}
+
+	// Render, deduplicating by resolved tech name.
+	seen := map[string]struct{}{}
+	var rows []researchRow
+
+	for _, tok := range cleaned {
+		// Substitute {civ}/{native} placeholders so that tokens like
+		// "phase_town_{civ}" resolve correctly for each civilization.
+		tok = tmpl.SubstCiv(tok, civCode)
+
+		// Try pair expansion first.
+		if top, bot, ok := tech.ExpandPair(g.Catalog, tok); ok {
+			for _, t := range []*tech.Technology{top, bot} {
+				if !tech.AllowsCiv(t.Requirements, civCode) {
+					continue
+				}
+				if _, dup := seen[t.Name]; dup {
+					continue
+				}
+				seen[t.Name] = struct{}{}
+				phase := requirementPhase(t, civCode, g.Index)
+				name := i18n.TechDisplayName(t, civCode)
+				rows = append(rows, researchRow{
+					phase: phase,
+					rank:  phaseRank(phase),
+					name:  name,
+					line:  formatPairRow(t, g.Index, civCode),
+				})
+			}
+			continue
+		}
+
+		// Resolve to civ-specific variant via Index.
+		var t *tech.Technology
+		if g.Index != nil {
+			t = g.Index.ResolveForCiv(tok, civCode)
+		} else {
+			// Fallback: direct catalog lookup.
+			if ct, err := g.Catalog.ByName(tok); err == nil {
+				t = ct
+			}
+		}
+
+		// Phase-fallback: tokens of the form "phase_X_<civCode>" come from shared
+		// civic_centre templates with {civ} substituted. When a civ-specific variant
+		// does not exist (e.g. phase_town_germ.json is absent), strip the suffix and
+		// resolve the abstract name (e.g. "phase_town") so we get the generic tech.
+		if t == nil && g.Index != nil &&
+			strings.HasPrefix(tok, "phase_") &&
+			strings.HasSuffix(tok, "_"+civCode) {
+			stripped := strings.TrimSuffix(tok, "_"+civCode)
+			t = g.Index.ResolveForCiv(stripped, civCode)
+		}
+
+		if t == nil {
+			rows = append(rows, researchRow{
+				phase: "—",
+				rank:  3,
+				name:  tok,
+				line:  fmt.Sprintf("| %s | — | — | — | (не найдено) |", escapeTable(tok)),
+			})
+			continue
+		}
+		// Skip technologies not available to this civ.
+		if !tech.AllowsCiv(t.Requirements, civCode) {
+			continue
+		}
+		if _, dup := seen[t.Name]; dup {
+			continue
+		}
+		seen[t.Name] = struct{}{}
+		phase := requirementPhase(t, civCode, g.Index)
+		name := i18n.TechDisplayName(t, civCode)
+		rows = append(rows, researchRow{
+			phase: phase,
+			rank:  phaseRank(phase),
+			name:  name,
+			line:  formatTechRow(t, g.Index, civCode),
+		})
+	}
+
+	if len(rows) == 0 {
+		return
+	}
+
+	sort.SliceStable(rows, func(i, j int) bool {
+		if rows[i].rank != rows[j].rank {
+			return rows[i].rank < rows[j].rank
+		}
+		return rows[i].name < rows[j].name
+	})
+
 	fmt.Fprintln(sb, "#### Исследует")
 	fmt.Fprintln(sb)
 	fmt.Fprintln(sb, "| Технология | Стоимость | Время | Фаза | Эффект |")
 	fmt.Fprintln(sb, "|-----------|-----------|-------|------|--------|")
-	for _, name := range cleaned {
-		t, err := g.Catalog.ByName(name)
-		if err != nil {
-			fmt.Fprintf(sb, "| %s | — | — | — | (не найдено) |\n", name)
-			continue
-		}
-		cost := formatTechCost(t.Cost)
-		time := "—"
-		if t.ResearchTime > 0 {
-			time = fmt.Sprintf("%s сек", i18n.FormatNumber(t.ResearchTime))
-		}
-		phase := requirementPhase(t.Requirements)
-		eff := t.Tooltip
-		if eff == "" {
-			eff = i18n.DescribeModifications(t.Modifications)
-		}
-		gen := t.GenericName
-		if gen == "" {
-			gen = t.Name
-		}
-		fmt.Fprintf(sb, "| %s | %s | %s | %s | %s |\n", escapeTable(gen), cost, time, phase, escapeTable(eff))
+	for _, row := range rows {
+		fmt.Fprintln(sb, row.line)
 	}
 	fmt.Fprintln(sb)
 }
 
-func formatTechCost(c tech.Cost) string {
-	parts := []string{}
-	if c.Food != 0 {
-		parts = append(parts, fmt.Sprintf("%d %s", c.Food, i18n.ResourceName("food")))
-	}
-	if c.Wood != 0 {
-		parts = append(parts, fmt.Sprintf("%d %s", c.Wood, i18n.ResourceName("wood")))
-	}
-	if c.Stone != 0 {
-		parts = append(parts, fmt.Sprintf("%d %s", c.Stone, i18n.ResourceName("stone")))
-	}
-	if c.Metal != 0 {
-		parts = append(parts, fmt.Sprintf("%d %s", c.Metal, i18n.ResourceName("metal")))
-	}
-	if len(parts) == 0 {
+// requirementPhase extracts the phase label from a tech requirement.
+// idx is used for civ-variant phase tech resolution; may be nil (legacy mode).
+func requirementPhase(t *tech.Technology, civ string, idx *tech.Index) string {
+	if t == nil {
 		return "—"
 	}
-	return strings.Join(parts, ", ")
+	req := t.Requirements
+	if req == nil {
+		// Fallback: derive phase from t.Supersedes chain when no explicit requirement.
+		if idx != nil && t.Supersedes != "" {
+			if lbl := phaseLabelFromSupersedes(t.Supersedes); lbl != "" {
+				return lbl
+			}
+		}
+		return "—"
+	}
+
+	raw := extractRawPhase(req)
+
+	if raw == "" {
+		// No tech/all-tech requirement found — try Supersedes-based fallback.
+		if idx != nil && t.Supersedes != "" {
+			if lbl := phaseLabelFromSupersedes(t.Supersedes); lbl != "" {
+				return lbl
+			}
+		}
+		return "—"
+	}
+
+	// Direct known labels.
+	if label := i18n.PhaseRequirement(raw); label != "" && label != raw {
+		return label
+	}
+
+	// Phase-variant token: resolve to civ-specific tech and derive label.
+	if strings.HasPrefix(raw, "phase_") && idx != nil {
+		resolved := idx.ResolveForCiv(raw, civ)
+		if resolved != nil {
+			if label := i18n.PhaseRequirement(resolved.Name); label != "" && label != resolved.Name {
+				return label
+			}
+			// Derive from chain: Supersedes tells us which phase this upgrades from.
+			if lbl := phaseLabelFromSupersedes(resolved.Supersedes); lbl != "" {
+				return lbl
+			}
+		}
+	}
+
+	return i18n.PhaseRequirement(raw)
 }
 
-func requirementPhase(req tech.Requirements) string {
-	if req == nil {
-		return "—"
-	}
+// extractRawPhase returns the raw phase token string from a Requirements map,
+// or "" if none found.
+func extractRawPhase(req tech.Requirements) string {
 	if v, ok := req["tech"]; ok {
 		if s, ok := v.(string); ok {
-			return i18n.PhaseRequirement(s)
+			return s
 		}
 	}
 	if all, ok := req["all"]; ok {
@@ -231,13 +438,49 @@ func requirementPhase(req tech.Requirements) string {
 			for _, item := range list {
 				if m, ok := item.(map[string]any); ok {
 					if v, ok := m["tech"].(string); ok {
-						if p := i18n.PhaseRequirement(v); p != "" {
-							return p
+						if strings.HasPrefix(v, "phase_") {
+							return v
 						}
 					}
 				}
 			}
 		}
 	}
-	return "—"
+	return ""
+}
+
+// phaseLabelFromSupersedes returns the phase label of the next phase above the
+// one named by supersedes. E.g. if a tech supersedes "phase_village" it is the
+// Town phase tech, if it supersedes "phase_town" it is the City phase tech.
+func phaseLabelFromSupersedes(s string) string {
+	switch {
+	case strings.HasPrefix(s, "phase_village"):
+		return "Town"
+	case strings.HasPrefix(s, "phase_town"):
+		return "City"
+	}
+	return ""
+}
+
+// phaseRank returns the sort key for a phase label. Lower = earlier phase.
+// Unknown labels (including "—") sort last.
+func phaseRank(label string) int {
+	switch label {
+	case "Village":
+		return 0
+	case "Town":
+		return 1
+	case "City":
+		return 2
+	}
+	return 3
+}
+
+// researchRow holds pre-rendered data for a single research table row,
+// used to sort rows by phase before emitting them.
+type researchRow struct {
+	phase string
+	rank  int
+	name  string // display name for stable secondary sort
+	line  string // pre-rendered markdown row
 }

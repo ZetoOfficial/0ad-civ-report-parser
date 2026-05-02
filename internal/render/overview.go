@@ -30,7 +30,7 @@ func (g *Generator) renderOverview(
 	civ *civdata.Civ,
 	player *civdata.PlayerTemplate,
 	teamBonus *aura.Aura,
-	bonuses, notciv []*tech.Technology,
+	bonuses, civSpecific, notciv []*tech.Technology,
 	units, buildings []civdata.Entity,
 	heroAuras []*aura.Aura,
 ) string {
@@ -41,7 +41,7 @@ func (g *Generator) renderOverview(
 	}
 	g.overviewHeroes(&sb, units, heroAuras)
 	g.overviewCivSpecificStructures(&sb, buildings)
-	g.overviewSpecificTechnologies(&sb, info.Code, bonuses)
+	g.overviewSpecificTechnologies(&sb, info.Code, civSpecific)
 	g.overviewCivBonuses(&sb, info.Code, civ, bonuses)
 	g.overviewGlobalAutoResearchFooter(&sb)
 	g.overviewTeamBonus(&sb, civ, teamBonus)

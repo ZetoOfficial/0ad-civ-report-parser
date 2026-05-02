@@ -17,6 +17,7 @@ type Generator struct {
 	Layout         paths.Layout
 	Resolver       *tmpl.Resolver
 	Catalog        *tech.Catalog
+	Index          *tech.Index // lazily built in Generate; set manually in tests if needed
 	IncludeHistory bool
 }
 
@@ -41,18 +42,24 @@ func (g *Generator) Generate(civInfo civdata.CivCode) (Output, error) {
 	if err != nil {
 		return Output{}, err
 	}
-	buildings, err := civdata.Buildings(g.Layout.StructuresOf(civInfo.Code), civInfo.Code, g.Resolver)
+	if g.Index == nil {
+		g.Index, err = tech.NewIndex(g.Catalog)
+		if err != nil {
+			return Output{}, err
+		}
+	}
+	res, err := civdata.Reach(civ, g.Resolver.Index, g.Resolver, g.Catalog)
 	if err != nil {
 		return Output{}, err
 	}
-	units, err := civdata.Units(g.Layout.UnitsOf(civInfo.Code), civInfo.Code, g.Resolver)
-	if err != nil {
-		return Output{}, err
-	}
+	buildings := res.Buildings
+	units := res.Units
 	bonuses, err := g.Catalog.AllCivBonuses(civInfo.Code)
 	if err != nil {
 		return Output{}, err
 	}
+	// civSpecific covers root technologies/ files with civ-lock too, not just civbonuses/.
+	civSpecific := g.Index.CivSpecific(civInfo.Code)
 	notciv, err := g.Catalog.AllNotCiv(civInfo.Code)
 	if err != nil {
 		return Output{}, err
@@ -75,8 +82,8 @@ func (g *Generator) Generate(civInfo civdata.CivCode) (Output, error) {
 	}
 
 	return Output{
-		Overview:  g.renderOverview(civInfo, civ, player, teamBonus, bonuses, notciv, units, buildings, heroAuras),
-		Structree: g.renderStructree(civInfo.Code, buildings, units, heroAuras, catafalqueAuras),
+		Overview:  g.renderOverview(civInfo, civ, player, teamBonus, bonuses, civSpecific, notciv, units, buildings, heroAuras),
+		Structree: g.renderStructree(civInfo.Code, res, heroAuras, catafalqueAuras),
 	}, nil
 }
 

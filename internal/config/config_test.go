@@ -14,8 +14,8 @@ func TestDefaults(t *testing.T) {
 	if c.Gamedata != paths.DefaultGameDataRoot {
 		t.Errorf("Gamedata = %q; want %q", c.Gamedata, paths.DefaultGameDataRoot)
 	}
-	if c.OutDir != "." {
-		t.Errorf("OutDir = %q; want %q", c.OutDir, ".")
+	if c.OutDir != DefaultOutDir {
+		t.Errorf("OutDir = %q; want %q", c.OutDir, DefaultOutDir)
 	}
 	if c.Lang != "" {
 		t.Errorf("Lang = %q; want empty", c.Lang)

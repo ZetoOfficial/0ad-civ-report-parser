@@ -12,7 +12,7 @@
 
 ## Пробелы
 
-### 1. Парные технологии не разворачиваются
+### 1. Парные технологии не разворачиваются  *(закрыто в эпике 3, см. внизу)*
 
 **Что есть сейчас:** в таблице «Исследует» под зданием парный тех (файл
 с префиксом `pair_*` или содержащий поля `top`/`bottom`) выводится одной
@@ -183,7 +183,7 @@ struct (может быть `string` или `[]string` — нужно `RawMessag
 
 ---
 
-### 7. `supersedes` / `replaces` / `replacedBy` не используются
+### 7. `supersedes` / `replaces` / `replacedBy` не используются  *(закрыто в эпике 3, см. внизу)*
 
 **Что есть сейчас:** `Supersedes` и `ReplacedBy` парсятся, но не
 рендерятся. `Replaces` (массив) — поля в struct нет.
@@ -204,7 +204,7 @@ phase-теха активен.
 
 ---
 
-### 8. Цив-специфичные phase-варианты не различаются
+### 8. Цив-специфичные phase-варианты не различаются  *(закрыто в эпике 3, см. внизу)*
 
 **Что есть сейчас:** `i18n.PhaseRequirement` сводит `phase_town_athen`,
 `phase_town_pers`, `phase_town_han` и `phase_town_generic` в общий «Town».
@@ -232,7 +232,7 @@ generic-варианта.
 
 ---
 
-### 9. Транзитивное замыкание от StartEntities не реализовано
+### 9. Транзитивное замыкание от StartEntities не реализовано  *(закрыто в эпике 3, см. внизу)*
 
 **Что есть сейчас:** `civdata.Buildings` и `Units` — это `filepath.Glob`
 по `templates/structures/{civ}/` и `templates/units/{civ}/`.
@@ -330,7 +330,7 @@ Arsenal» и т. п.
 
 ---
 
-### 13. WallSet не группируется
+### 13. WallSet не группируется  *(закрыто в эпике 3, см. внизу)*
 
 **Что есть сейчас:** `wall_short`, `wall_medium`, `wall_long`, `wall_gate`,
 `wall_tower`, `wallset_stone` рендерятся как отдельные здания в фазе.
@@ -617,6 +617,16 @@ Player-шаблон в `Generator.Generate` и прочитать три пол�
 рендер краткого списка.
 
 **Зависит от:** —
+
+## Закрытые gaps
+
+| Gap | Заголовок | Эпик | Реализация |
+|-----|-----------|------|------------|
+| 1 | Парные технологии | 3 | `tech.ExpandPair`; рендер двумя строками с маркером ◐ |
+| 7 | supersedes/replaces/replacedBy | 3 | `tech.Index{Chain, ResolveForCiv}`; chain-suffix в таблицах исследований |
+| 8 | Civ-варианты фаз | 3 | `Index.ResolveForCiv` + `Supersedes`-fallback в `requirementPhase` |
+| 9 | Транзитивное замыкание | 3 | `civdata.Reach(civ, idx, resolver, catalog)`; `Buildings()`/`Units()` удалены |
+| 13 | Группировка WallSet | 3 | `civdata.IdentifyWallSets`; render `### Стены` блоком |
 
 ## Принятые решения
 

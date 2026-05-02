@@ -60,6 +60,7 @@ func TestGoldenGermStructure(t *testing.T) {
 		"## VILLAGE PHASE",
 		"## TOWN PHASE",
 		"## CITY PHASE",
+		"### Стены",
 		"## Приложение: Детальная информация по типам юнитов",
 		"## Приложение: Сводная таблица строимых зданий",
 	}

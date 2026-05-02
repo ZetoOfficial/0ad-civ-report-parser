@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -168,6 +170,83 @@ func RequiresCiv(req Requirements) string {
 	return ""
 }
 
+// AllowsCiv reports whether civ is permitted by the requirements tree.
+// Handles arbitrary nesting of all/any with civ/notciv leaves.
+//
+// Semantics:
+//   - {"civ": X}      → allowed iff civ == X
+//   - {"notciv": [...]} → allowed iff civ ∉ list
+//   - {"all": [...]}  → all children must allow
+//   - {"any": [...]}  → at least one child must allow
+//   - other keys (tech, entity, …) → not a civ filter, allowed
+//   - empty/nil       → allowed
+//
+// Note: a single Requirements map can mix multiple keys (e.g. top-level
+// {"tech": "...", "civ": "..."}). All keys are treated as implicit AND.
+func AllowsCiv(req Requirements, civ string) bool {
+	if req == nil {
+		return true
+	}
+	for k, v := range req {
+		switch k {
+		case "civ":
+			if s, ok := v.(string); ok && s != civ {
+				return false
+			}
+		case "notciv":
+			for _, blocked := range parseStringList(v) {
+				if blocked == civ {
+					return false
+				}
+			}
+		case "all":
+			if list, ok := v.([]any); ok {
+				for _, item := range list {
+					if m, ok := item.(map[string]any); ok {
+						if !AllowsCiv(Requirements(m), civ) {
+							return false
+						}
+					}
+				}
+			}
+		case "any":
+			if list, ok := v.([]any); ok {
+				anyOk := false
+				for _, item := range list {
+					if m, ok := item.(map[string]any); ok {
+						if AllowsCiv(Requirements(m), civ) {
+							anyOk = true
+							break
+						}
+					}
+				}
+				if !anyOk {
+					return false
+				}
+			}
+		// tech/entity/… ignored — not a civ filter
+		}
+	}
+	return true
+}
+
+// parseStringList coerces v to a []string for notciv handling.
+func parseStringList(v any) []string {
+	switch x := v.(type) {
+	case string:
+		return []string{x}
+	case []any:
+		out := make([]string, 0, len(x))
+		for _, e := range x {
+			if s, ok := e.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
 func NotCivList(req Requirements) []string {
 	out := []string{}
 	if req == nil {
@@ -219,13 +298,38 @@ func (c *Catalog) AllNotCiv(civ string) ([]*Technology, error) {
 		if err != nil {
 			return err
 		}
-		for _, blocked := range NotCivList(t.Requirements) {
-			if blocked == civ {
-				out = append(out, t)
-				return nil
-			}
+		if slices.Contains(NotCivList(t.Requirements), civ) {
+			out = append(out, t)
 		}
 		return nil
 	})
 	return out, err
+}
+
+// LoadAll walks Catalog.dir recursively, parses every *.json into
+// cache. Idempotent. Used by Index to avoid duplicating WalkDir.
+func (c *Catalog) LoadAll() error {
+	return filepath.WalkDir(c.dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".json") {
+			return nil
+		}
+		t, err := Load(path)
+		if err != nil {
+			return err
+		}
+		if _, ok := c.cache[t.Name]; !ok {
+			c.cache[t.Name] = t
+		}
+		return nil
+	})
+}
+
+// AllLoaded returns a shallow clone of the cache map. The caller may mutate
+// the returned map (add/delete keys) without affecting the catalog cache.
+// Note: *Technology pointers are shared — do not mutate the pointed-to structs.
+func (c *Catalog) AllLoaded() map[string]*Technology {
+	return maps.Clone(c.cache)
 }

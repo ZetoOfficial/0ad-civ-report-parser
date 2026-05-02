@@ -16,10 +16,14 @@ type Config struct {
 	IncludeIcons   bool   `json:"include_icons"`
 }
 
+// DefaultOutDir is the default directory for generated reports. Relative to
+// the binary's working directory; created on demand if missing.
+const DefaultOutDir = "out"
+
 func Defaults() Config {
 	return Config{
 		Gamedata: paths.DefaultGameDataRoot,
-		OutDir:   ".",
+		OutDir:   DefaultOutDir,
 		Lang:     "",
 	}
 }

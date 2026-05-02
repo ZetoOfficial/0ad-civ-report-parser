@@ -29,46 +29,6 @@ func (e Entity) HasClass(name string) bool {
 	return false
 }
 
-func loadDir(dir, civCode string, resolver *tmpl.Resolver) ([]Entity, error) {
-	matches, err := filepath.Glob(filepath.Join(dir, "*.xml"))
-	if err != nil {
-		return nil, err
-	}
-	sort.Strings(matches)
-	out := make([]Entity, 0, len(matches))
-	for _, m := range matches {
-		el, err := resolver.Resolve(m)
-		if err != nil {
-			return nil, err
-		}
-		base := strings.TrimSuffix(filepath.Base(m), ".xml")
-		out = append(out, Entity{
-			TemplateID: kindFromDir(dir) + "/" + civCode + "/" + base,
-			Path:       m,
-			Element:    el,
-		})
-	}
-	return out, nil
-}
-
-func kindFromDir(dir string) string {
-	switch filepath.Base(filepath.Dir(dir)) {
-	case "structures":
-		return "structures"
-	case "units":
-		return "units"
-	}
-	return filepath.Base(filepath.Dir(dir))
-}
-
-func Buildings(structuresDir, civCode string, resolver *tmpl.Resolver) ([]Entity, error) {
-	return loadDir(structuresDir, civCode, resolver)
-}
-
-func Units(unitsDir, civCode string, resolver *tmpl.Resolver) ([]Entity, error) {
-	return loadDir(unitsDir, civCode, resolver)
-}
-
 func IsHero(e Entity) bool {
 	if strings.HasPrefix(e.Basename(), "hero_") {
 		return true
@@ -145,18 +105,30 @@ func (p Phase) RU() string {
 }
 
 func BuildingPhase(e Entity) Phase {
+	// R28 format: Identity/Requirements/Techs (tokens-list after merge).
+	techs := e.Element.GetTokens("Identity/Requirements/Techs")
+	for _, t := range techs {
+		if t == "" || strings.HasPrefix(t, "-") {
+			continue
+		}
+		switch {
+		case strings.HasPrefix(t, "phase_city"):
+			return PhaseCity
+		case strings.HasPrefix(t, "phase_town"):
+			return PhaseTown
+		case strings.HasPrefix(t, "phase_village"):
+			return PhaseVillage
+		}
+	}
+	// Legacy fallback for any old-format templates with Identity/RequiredTechnology.
 	req := e.Element.GetText("Identity/RequiredTechnology")
-	switch req {
-	case "phase_town", "phase_town_generic", "phase_town_athen", "phase_town_brit", "phase_town_cart", "phase_town_gaul", "phase_town_germ", "phase_town_han", "phase_town_iber", "phase_town_kush", "phase_town_mace", "phase_town_maur", "phase_town_pers", "phase_town_ptol", "phase_town_rome", "phase_town_sele", "phase_town_spart":
-		return PhaseTown
-	case "phase_city", "phase_city_generic", "phase_city_athen", "phase_city_brit", "phase_city_cart", "phase_city_gaul", "phase_city_germ", "phase_city_han", "phase_city_iber", "phase_city_kush", "phase_city_mace", "phase_city_maur", "phase_city_pers", "phase_city_ptol", "phase_city_rome", "phase_city_sele", "phase_city_spart":
+	switch {
+	case strings.HasPrefix(req, "phase_city"):
 		return PhaseCity
-	}
-	if strings.HasPrefix(req, "phase_town") {
+	case strings.HasPrefix(req, "phase_town"):
 		return PhaseTown
-	}
-	if strings.HasPrefix(req, "phase_city") {
-		return PhaseCity
+	case strings.HasPrefix(req, "phase_village"):
+		return PhaseVillage
 	}
 	return PhaseVillage
 }
@@ -185,6 +157,7 @@ var buildingOrderHints = []string{
 	"wall_long",
 	"wall_gate",
 	"wall_tower",
+	"wallset_palisade",
 	"wallset_stone",
 	"fortress",
 	"arsenal",

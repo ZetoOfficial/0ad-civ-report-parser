@@ -61,7 +61,15 @@ func FormatNumber(v float64) string {
 	if v == float64(int64(v)) {
 		return strconv.FormatInt(int64(v), 10)
 	}
-	return strconv.FormatFloat(v, 'f', -1, 64)
+	// Round to 6 decimals to eliminate IEEE 754 noise from arithmetic on
+	// parsed floats (e.g. WalkSpeed 9 × RunMultiplier 1.2 → 10.8, not
+	// 10.799999999999999). Six decimals preserve sub-percent precision
+	// found in template data while collapsing binary-fraction tails.
+	rounded := math.Round(v*1e6) / 1e6
+	if rounded == float64(int64(rounded)) {
+		return strconv.FormatInt(int64(rounded), 10)
+	}
+	return strconv.FormatFloat(rounded, 'f', -1, 64)
 }
 
 func FormatPercent(multiplier float64) string {

@@ -19,6 +19,10 @@
 
 bin/
 
+# default output directory for generated reports (configurable via
+# config.json out_dir or --out-dir flag)
+out/
+
 # git worktrees (isolated workspaces for subagent-driven development)
 .worktrees/
 
