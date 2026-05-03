@@ -82,21 +82,32 @@ func (g *Generator) Generate(civInfo civdata.CivCode) (Output, error) {
 		return Output{}, err
 	}
 
-	if g.statusEffects == nil {
-		list, err := loadStatusEffects(g.Layout.StatusEffects())
-		if err != nil {
-			return Output{}, err
-		}
-		g.statusEffects = make(map[string]statusEffect, len(list))
-		for _, e := range list {
-			g.statusEffects[e.Code] = e
-		}
+	if _, err := g.loadStatusEffectsCached(); err != nil {
+		return Output{}, err
 	}
 
 	return Output{
 		Overview:  g.renderOverview(civInfo, civ, player, teamBonus, bonuses, civSpecific, notciv, units, buildings, heroAuras),
 		Structree: g.renderStructree(civInfo.Code, res, heroAuras, catafalqueAuras),
 	}, nil
+}
+
+// loadStatusEffectsCached returns the sorted slice of status effects and, as a
+// side-effect, populates g.statusEffects (the code→effect map) the first time
+// it is called.  Subsequent calls return a freshly-sorted slice from the same
+// underlying data without re-reading disk.
+func (g *Generator) loadStatusEffectsCached() ([]statusEffect, error) {
+	list, err := loadStatusEffects(g.Layout.StatusEffects())
+	if err != nil {
+		return nil, err
+	}
+	if g.statusEffects == nil {
+		g.statusEffects = make(map[string]statusEffect, len(list))
+		for _, e := range list {
+			g.statusEffects[e.Code] = e
+		}
+	}
+	return list, nil
 }
 
 // RenderCommon returns the body of the shared common.md (without the

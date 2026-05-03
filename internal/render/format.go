@@ -349,14 +349,16 @@ func formatApplyStatuses(modeEl *tmpl.Element, byCode map[string]statusEffect) [
 	for _, child := range as.Children {
 		code := child.Name
 
+		// Parse Duration once; used for both the BlockChance check and the
+		// seconds conversion below.
+		durRaw := child.GetText("Duration")
+		dur, durOK := tmpl.ParseFloatTrim(durRaw)
+
 		// BlockChance edge-case: skip no-op defaults (BlockChance>0 and Duration<=0).
 		blockRaw := child.GetText("BlockChance")
-		durRaw := child.GetText("Duration")
-
 		if blockRaw != "" {
 			bc, ok := tmpl.ParseFloatTrim(blockRaw)
 			if ok && bc > 0 {
-				dur, durOK := tmpl.ParseFloatTrim(durRaw)
 				if durRaw == "" || !durOK || dur <= 0 {
 					continue
 				}
@@ -364,7 +366,6 @@ func formatApplyStatuses(modeEl *tmpl.Element, byCode map[string]statusEffect) [
 		}
 
 		// Skip any entry with zero or missing Duration.
-		dur, durOK := tmpl.ParseFloatTrim(durRaw)
 		if !durOK || dur <= 0 {
 			continue
 		}
@@ -404,8 +405,12 @@ func formatApplyStatuses(modeEl *tmpl.Element, byCode map[string]statusEffect) [
 			line = fmt.Sprintf("%s: %s/%sс × %sс (см. common.md#%s)", name, dmgStr, intervalSec, durationStr, anchor)
 		case dmgStr == "" && intervalSec != "":
 			line = fmt.Sprintf("%s: каждые %sс × %sс (см. common.md#%s)", name, intervalSec, durationStr, anchor)
-		default:
+		case dmgStr != "":
+			// damage present, no interval
 			line = fmt.Sprintf("%s: %s × %sс (см. common.md#%s)", name, dmgStr, durationStr, anchor)
+		default:
+			// neither damage nor interval: omit the empty prefix to avoid double space
+			line = fmt.Sprintf("%s: %sс (см. common.md#%s)", name, durationStr, anchor)
 		}
 		out = append(out, line)
 	}
