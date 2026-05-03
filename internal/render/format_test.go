@@ -1,6 +1,7 @@
 package render
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/tmpl"
@@ -230,7 +231,7 @@ func TestFormatSplash(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := formatSplash(tc.input)
 			if tc.contains != "" {
-				if !contains(got, tc.contains) {
+				if !strings.Contains(got, tc.contains) {
 					t.Errorf("formatSplash() = %q, want substring %q", got, tc.contains)
 				}
 				return
@@ -299,13 +300,23 @@ func TestFormatCaptureAttack(t *testing.T) {
 			),
 			contains: "(4м)",
 		},
+		{
+			name: "partial only RepeatTime",
+			input: mkEl("Attack",
+				mkEl("Capture",
+					mkText("Capture", "1"),
+					mkText("RepeatTime", "500"),
+				),
+			),
+			contains: "(500мс)",
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := formatCaptureAttack(tc.input)
 			if tc.contains != "" {
-				if !contains(got, tc.contains) {
+				if !strings.Contains(got, tc.contains) {
 					t.Errorf("formatCaptureAttack() = %q, want substring %q", got, tc.contains)
 				}
 				return
@@ -317,16 +328,3 @@ func TestFormatCaptureAttack(t *testing.T) {
 	}
 }
 
-// contains is a helper to check for substring without importing strings in test helpers.
-func contains(s, sub string) bool {
-	return len(s) >= len(sub) && (s == sub || len(sub) == 0 || findSubstring(s, sub))
-}
-
-func findSubstring(s, sub string) bool {
-	for i := 0; i <= len(s)-len(sub); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
-}

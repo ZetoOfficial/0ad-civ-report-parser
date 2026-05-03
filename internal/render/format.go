@@ -271,6 +271,8 @@ func formatPreferredClasses(modeEl *tmpl.Element) string {
 }
 
 // formatSplash formats the Splash sub-element of a Melee/Ranged node.
+// formatAttackBonuses is called on the Splash node itself because Splash can
+// carry its own <Bonuses> (splash multipliers vs class, e.g. ×2 vs Infantry).
 func formatSplash(modeEl *tmpl.Element) string {
 	if modeEl == nil {
 		return ""
@@ -291,16 +293,13 @@ func formatSplash(modeEl *tmpl.Element) string {
 
 	shapeRaw := splash.GetText("Shape")
 	var shape string
-	switch shapeRaw {
-	case "Linear":
+	switch {
+	case shapeRaw == "Linear":
 		shape = "линия"
+	case shapeRaw == "" || shapeRaw == "Circular":
+		shape = "круг"
 	default:
-		// Circular or empty → "круг"; anything else echoed raw
-		if shapeRaw == "" || shapeRaw == "Circular" {
-			shape = "круг"
-		} else {
-			shape = shapeRaw
-		}
+		shape = shapeRaw
 	}
 
 	rangeV := splash.GetText("Range")
@@ -321,7 +320,7 @@ func formatSplash(modeEl *tmpl.Element) string {
 		sb.WriteString(strings.Join(dmgs, ", "))
 		sb.WriteString(", ")
 	}
-	sb.WriteString(fmt.Sprintf("%s R=%s, %s", shape, rangeV, ffText))
+	fmt.Fprintf(&sb, "%s R=%s, %s", shape, rangeV, ffText)
 
 	if bonuses := formatAttackBonuses(splash); bonuses != "" {
 		sb.WriteString(", ")
@@ -332,6 +331,8 @@ func formatSplash(modeEl *tmpl.Element) string {
 }
 
 // formatCaptureAttack formats the Capture attack from the parent Attack node.
+// The parameter is the parent Attack element (not Capture directly) because
+// call sites already hold the Attack node in scope.
 func formatCaptureAttack(attackEl *tmpl.Element) string {
 	if attackEl == nil {
 		return ""
@@ -357,13 +358,13 @@ func formatCaptureAttack(attackEl *tmpl.Element) string {
 		out += fmt.Sprintf(" (%sмс)", repeat)
 	}
 
-	if bonuses := formatAttackBonuses(cap); bonuses != "" {
-		out += "; " + bonuses
-	}
-
 	restricted := cap.GetTokens("RestrictedClasses")
 	if len(restricted) > 0 {
 		out += "; исключает: " + strings.Join(restricted, ", ")
+	}
+
+	if bonuses := formatAttackBonuses(cap); bonuses != "" {
+		out += "; " + bonuses
 	}
 
 	return out
