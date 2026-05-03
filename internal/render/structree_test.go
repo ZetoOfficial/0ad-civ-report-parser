@@ -233,9 +233,7 @@ func TestStructree_PikemanBonus(t *testing.T) {
 		snippet := out.Structree
 		if idx := strings.Index(out.Structree, "Бонусы (ближ.)"); idx >= 0 {
 			end := idx + 120
-			if end > len(out.Structree) {
-				end = len(out.Structree)
-			}
+			end = min(end, len(out.Structree))
 			snippet = out.Structree[idx:end]
 		}
 		t.Errorf("spart structree missing %q; context: %q", want, snippet)
@@ -257,9 +255,7 @@ func TestStructree_StonethrowerSplash(t *testing.T) {
 		snippet := out.Structree
 		if idx := strings.Index(out.Structree, wantLabel); idx >= 0 {
 			end := idx + 200
-			if end > len(out.Structree) {
-				end = len(out.Structree)
-			}
+			end = min(end, len(out.Structree))
 			snippet = out.Structree[idx:end]
 		}
 		t.Errorf("mace structree missing splash value %q; context: %q", wantValue, snippet)
@@ -280,9 +276,7 @@ func TestStructree_MaurPoisonedArrows(t *testing.T) {
 		snippet := out.Structree
 		if idx := strings.Index(out.Structree, wantLabel); idx >= 0 {
 			end := idx + 200
-			if end > len(out.Structree) {
-				end = len(out.Structree)
-			}
+			end = min(end, len(out.Structree))
 			snippet = out.Structree[idx:end]
 		}
 		t.Errorf("maur structree missing poisoned value %q; context: %q", wantValue, snippet)
@@ -303,9 +297,7 @@ func TestStructree_IberBurningArrows(t *testing.T) {
 		snippet := out.Structree
 		if idx := strings.Index(out.Structree, wantLabel); idx >= 0 {
 			end := idx + 200
-			if end > len(out.Structree) {
-				end = len(out.Structree)
-			}
+			end = min(end, len(out.Structree))
 			snippet = out.Structree[idx:end]
 		}
 		t.Errorf("iber structree missing burning value %q; context: %q", wantValue, snippet)
@@ -323,9 +315,7 @@ func TestStructree_InfantryCaptureMode(t *testing.T) {
 		snippet := out.Structree
 		if idx := strings.Index(out.Structree, "Атака (захват)"); idx >= 0 {
 			end := idx + 200
-			if end > len(out.Structree) {
-				end = len(out.Structree)
-			}
+			end = min(end, len(out.Structree))
 			snippet = out.Structree[idx:end]
 		}
 		t.Errorf("spart structree missing infantry capture row %q; context: %q", want, snippet)
