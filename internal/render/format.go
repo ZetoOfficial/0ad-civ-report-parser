@@ -417,6 +417,37 @@ func formatApplyStatuses(modeEl *tmpl.Element, byCode map[string]statusEffect) [
 	return out
 }
 
+// FormatCaptureResistance returns the Resistance/Entity/Capture value as a
+// formatted string, or "" if the field is absent.
+func FormatCaptureResistance(e *tmpl.Element) string {
+	v, ok := e.GetFloat("Resistance/Entity/Capture")
+	if !ok {
+		return ""
+	}
+	return i18n.FormatNumber(v)
+}
+
+// FormatStatusEffectResistance returns a formatted list of per-status
+// resistance multipliers from Resistance/Entity/StatusEffect.
+// Each child element is treated as "<code>×<multiplier>"; codes are
+// forced to lowercase per spec convention (resistance side).
+func FormatStatusEffectResistance(e *tmpl.Element) string {
+	se := e.Get("Resistance/Entity/StatusEffect")
+	if se == nil {
+		return ""
+	}
+	var parts []string
+	for _, child := range se.Children {
+		code := strings.ToLower(child.Name)
+		mul, ok := tmpl.ParseFloatTrim(child.Text)
+		if !ok {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s ×%s", code, i18n.FormatNumber(mul)))
+	}
+	return strings.Join(parts, ", ")
+}
+
 // formatCaptureAttack formats the Capture attack from the parent Attack node.
 // The parameter is the parent Attack element (not Capture directly) because
 // call sites already hold the Attack node in scope.

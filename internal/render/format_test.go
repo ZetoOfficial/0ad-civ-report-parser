@@ -475,4 +475,136 @@ func TestFormatApplyStatuses_NilInput(t *testing.T) {
 	}
 }
 
+func TestFormatCaptureResistance(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  *tmpl.Element
+		expect string
+	}{
+		{
+			name:   "no Resistance node",
+			input:  mkEl("Unit"),
+			expect: "",
+		},
+		{
+			name: "no Capture child",
+			input: mkEl("Unit",
+				mkEl("Resistance",
+					mkEl("Entity",
+						mkEl("Damage",
+							mkText("Hack", "10"),
+						),
+					),
+				),
+			),
+			expect: "",
+		},
+		{
+			name: "value 100",
+			input: mkEl("Unit",
+				mkEl("Resistance",
+					mkEl("Entity",
+						mkText("Capture", "100"),
+					),
+				),
+			),
+			expect: "100",
+		},
+		{
+			name: "fractional value",
+			input: mkEl("Unit",
+				mkEl("Resistance",
+					mkEl("Entity",
+						mkText("Capture", "75.5"),
+					),
+				),
+			),
+			expect: "75.5",
+		},
+	}
 
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := FormatCaptureResistance(tc.input)
+			if got != tc.expect {
+				t.Errorf("FormatCaptureResistance() = %q, want %q", got, tc.expect)
+			}
+		})
+	}
+}
+
+func TestFormatStatusEffectResistance(t *testing.T) {
+	tests := []struct {
+		name   string
+		input  *tmpl.Element
+		expect string
+	}{
+		{
+			name:   "no node",
+			input:  mkEl("Unit"),
+			expect: "",
+		},
+		{
+			name: "single status",
+			input: mkEl("Unit",
+				mkEl("Resistance",
+					mkEl("Entity",
+						mkEl("StatusEffect",
+							mkText("poisoned", "0.5"),
+						),
+					),
+				),
+			),
+			expect: "poisoned ×0.5",
+		},
+		{
+			name: "multiple statuses",
+			input: mkEl("Unit",
+				mkEl("Resistance",
+					mkEl("Entity",
+						mkEl("StatusEffect",
+							mkText("poisoned", "0.5"),
+							mkText("burning", "0.7"),
+						),
+					),
+				),
+			),
+			expect: "poisoned ×0.5, burning ×0.7",
+		},
+		{
+			name: "uppercase camelCase forced lowercase",
+			input: mkEl("Unit",
+				mkEl("Resistance",
+					mkEl("Entity",
+						mkEl("StatusEffect",
+							mkText("Poisoned", "0.5"),
+						),
+					),
+				),
+			),
+			expect: "poisoned ×0.5",
+		},
+		{
+			name: "skip child without parseable value",
+			input: mkEl("Unit",
+				mkEl("Resistance",
+					mkEl("Entity",
+						mkEl("StatusEffect",
+							mkText("poisoned", "notanumber"),
+						),
+					),
+				),
+			),
+			expect: "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := FormatStatusEffectResistance(tc.input)
+			if got != tc.expect {
+				t.Errorf("FormatStatusEffectResistance() = %q, want %q", got, tc.expect)
+			}
+		})
+	}
+}
