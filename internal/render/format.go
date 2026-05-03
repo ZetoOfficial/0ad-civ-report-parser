@@ -420,6 +420,9 @@ func formatApplyStatuses(modeEl *tmpl.Element, byCode map[string]statusEffect) [
 // FormatCaptureResistance returns the Resistance/Entity/Capture value as a
 // formatted string, or "" if the field is absent.
 func FormatCaptureResistance(e *tmpl.Element) string {
+	if e == nil {
+		return ""
+	}
 	v, ok := e.GetFloat("Resistance/Entity/Capture")
 	if !ok {
 		return ""
@@ -432,6 +435,9 @@ func FormatCaptureResistance(e *tmpl.Element) string {
 // Each child element is treated as "<code>×<multiplier>"; codes are
 // forced to lowercase per spec convention (resistance side).
 func FormatStatusEffectResistance(e *tmpl.Element) string {
+	if e == nil {
+		return ""
+	}
 	se := e.Get("Resistance/Entity/StatusEffect")
 	if se == nil {
 		return ""

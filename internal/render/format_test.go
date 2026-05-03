@@ -482,6 +482,11 @@ func TestFormatCaptureResistance(t *testing.T) {
 		expect string
 	}{
 		{
+			name:   "nil input",
+			input:  nil,
+			expect: "",
+		},
+		{
 			name:   "no Resistance node",
 			input:  mkEl("Unit"),
 			expect: "",
@@ -539,6 +544,11 @@ func TestFormatStatusEffectResistance(t *testing.T) {
 		input  *tmpl.Element
 		expect string
 	}{
+		{
+			name:   "nil input",
+			input:  nil,
+			expect: "",
+		},
 		{
 			name:   "no node",
 			input:  mkEl("Unit"),
