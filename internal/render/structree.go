@@ -94,6 +94,12 @@ func (g *Generator) renderBuilding(sb *strings.Builder, civCode string, b civdat
 	if a := FormatArmor(b.Element); a != "—" {
 		fmt.Fprintf(sb, "| Броня | %s |\n", a)
 	}
+	if r := FormatCaptureResistance(b.Element); r != "" {
+		fmt.Fprintf(sb, "| Сопротивление захвату | %s |\n", r)
+	}
+	if r := FormatStatusEffectResistance(b.Element); r != "" {
+		fmt.Fprintf(sb, "| Сопротивление статус-эффектам | %s |\n", r)
+	}
 	if pop := FormatPopulationBonus(b.Element); pop != "" {
 		fmt.Fprintf(sb, "| Население | %s |\n", pop)
 	}

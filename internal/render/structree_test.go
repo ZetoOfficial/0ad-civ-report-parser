@@ -221,6 +221,117 @@ func TestStructree_Germ_TownAndCityNotEmpty(t *testing.T) {
 	}
 }
 
+// TestStructree_PikemanBonus checks that champion pikemen produce a
+// "Бонусы (ближ.) | ×2.5 vs Cavalry" row in the unit detail appendix.
+// Spartans have champion_infantry_pike which inherits the anti-cav bonus from
+// template_unit_champion_infantry_pikeman.xml.
+func TestStructree_PikemanBonus(t *testing.T) {
+	skipIfNoGamedata(t)
+	out := generateFor(t, "spart")
+	want := "| Бонусы (ближ.) | ×2.5 vs Cavalry |"
+	if !strings.Contains(out.Structree, want) {
+		snippet := out.Structree
+		if idx := strings.Index(out.Structree, "Бонусы (ближ.)"); idx >= 0 {
+			end := idx + 120
+			if end > len(out.Structree) {
+				end = len(out.Structree)
+			}
+			snippet = out.Structree[idx:end]
+		}
+		t.Errorf("spart structree missing %q; context: %q", want, snippet)
+	}
+}
+
+// TestStructree_StonethrowerSplash checks that siege stonethrowers render a
+// Брызги (стрельба) row with "Crush 120, круг R=1.5, не задевает союзников".
+// Macedonians have a siege stonethrower (siege_lithobolos) reachable via the Reach algorithm.
+func TestStructree_StonethrowerSplash(t *testing.T) {
+	skipIfNoGamedata(t)
+	out := generateFor(t, "mace")
+	wantLabel := "Брызги (стрельба)"
+	wantValue := "Crush 120, круг R=1.5, не задевает союзников"
+	if !strings.Contains(out.Structree, wantLabel) {
+		t.Errorf("mace structree missing %q row entirely", wantLabel)
+	}
+	if !strings.Contains(out.Structree, wantValue) {
+		snippet := out.Structree
+		if idx := strings.Index(out.Structree, wantLabel); idx >= 0 {
+			end := idx + 200
+			if end > len(out.Structree) {
+				end = len(out.Structree)
+			}
+			snippet = out.Structree[idx:end]
+		}
+		t.Errorf("mace structree missing splash value %q; context: %q", wantValue, snippet)
+	}
+}
+
+// TestStructree_MaurPoisonedArrows checks that the Mauryan champion maiden archer
+// renders a "Накладывает (стрельба)" row with the Poisoned status-effect line.
+func TestStructree_MaurPoisonedArrows(t *testing.T) {
+	skipIfNoGamedata(t)
+	out := generateFor(t, "maur")
+	wantLabel := "Накладывает (стрельба)"
+	wantValue := "Poisoned: Poison 2/0.6с × 3.6с (см. common.md#poisoned)"
+	if !strings.Contains(out.Structree, wantLabel) {
+		t.Errorf("maur structree missing %q row entirely", wantLabel)
+	}
+	if !strings.Contains(out.Structree, wantValue) {
+		snippet := out.Structree
+		if idx := strings.Index(out.Structree, wantLabel); idx >= 0 {
+			end := idx + 200
+			if end > len(out.Structree) {
+				end = len(out.Structree)
+			}
+			snippet = out.Structree[idx:end]
+		}
+		t.Errorf("maur structree missing poisoned value %q; context: %q", wantValue, snippet)
+	}
+}
+
+// TestStructree_IberBurningArrows checks that the Iberian champion cavalry
+// renders a "Накладывает (стрельба)" row with the Burning status-effect line.
+func TestStructree_IberBurningArrows(t *testing.T) {
+	skipIfNoGamedata(t)
+	out := generateFor(t, "iber")
+	wantLabel := "Накладывает (стрельба)"
+	wantValue := "Burning: Fire 2/3с × 9с (см. common.md#burning)"
+	if !strings.Contains(out.Structree, wantLabel) {
+		t.Errorf("iber structree missing %q row entirely", wantLabel)
+	}
+	if !strings.Contains(out.Structree, wantValue) {
+		snippet := out.Structree
+		if idx := strings.Index(out.Structree, wantLabel); idx >= 0 {
+			end := idx + 200
+			if end > len(out.Structree) {
+				end = len(out.Structree)
+			}
+			snippet = out.Structree[idx:end]
+		}
+		t.Errorf("iber structree missing burning value %q; context: %q", wantValue, snippet)
+	}
+}
+
+// TestStructree_InfantryCaptureMode checks that infantry units render a capture
+// attack row. Infantry inherits <Capture>2.5</Capture> from template_unit_infantry.xml
+// so every infantry unit should produce "| Атака (захват) | захват 2.5 (4м, 1000мс); исключает: Field, Palisade, Wall |".
+func TestStructree_InfantryCaptureMode(t *testing.T) {
+	skipIfNoGamedata(t)
+	out := generateFor(t, "spart")
+	want := "| Атака (захват) | захват 2.5 (4м, 1000мс); исключает: Field, Palisade, Wall |"
+	if !strings.Contains(out.Structree, want) {
+		snippet := out.Structree
+		if idx := strings.Index(out.Structree, "Атака (захват)"); idx >= 0 {
+			end := idx + 200
+			if end > len(out.Structree) {
+				end = len(out.Structree)
+			}
+			snippet = out.Structree[idx:end]
+		}
+		t.Errorf("spart structree missing infantry capture row %q; context: %q", want, snippet)
+	}
+}
+
 // generateFor builds a full Output for the named civ using real gamedata.
 func generateFor(t *testing.T, civ string) Output {
 	t.Helper()

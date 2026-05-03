@@ -38,6 +38,8 @@ func TestNumericSpotChecks(t *testing.T) {
 		{"spart", "units/spart/infantry_spearman_b", "Cost/Resources/food", 50},
 		{"spart", "structures/spart/civil_centre", "Health/Max", 3000},
 		{"spart", "structures/spart/civil_centre", "TerritoryInfluence/Radius", 140},
+		// Pikeman champion anti-cavalry bonus after parent-chain resolution.
+		{"spart", "units/spart/champion_infantry_pike", "Attack/Melee/Bonuses/BonusCavMelee/Multiplier", 2.5},
 	}
 	for _, tc := range cases {
 		path := filepath.Join(testutil.GameDataRoot(), "simulation/templates", tc.template+".xml")
