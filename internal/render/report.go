@@ -14,12 +14,13 @@ import (
 )
 
 type Generator struct {
-	Layout         paths.Layout
-	Resolver       *tmpl.Resolver
-	Catalog        *tech.Catalog
-	Index          *tech.Index // lazily built in Generate; set manually in tests if needed
-	IncludeHistory bool
-	statusEffects  map[string]statusEffect // code → effect, lazily loaded in Generate
+	Layout            paths.Layout
+	Resolver          *tmpl.Resolver
+	Catalog           *tech.Catalog
+	Index             *tech.Index // lazily built in Generate; set manually in tests if needed
+	IncludeHistory    bool
+	statusEffects     map[string]statusEffect // code → effect, lazily loaded in Generate
+	statusEffectsList []statusEffect          // sorted slice; mirrors statusEffects, populated together
 }
 
 // Output holds the rendered markdown bodies for one civilization.
@@ -92,21 +93,24 @@ func (g *Generator) Generate(civInfo civdata.CivCode) (Output, error) {
 	}, nil
 }
 
-// loadStatusEffectsCached returns the sorted slice of status effects and, as a
-// side-effect, populates g.statusEffects (the code→effect map) the first time
-// it is called.  Subsequent calls return a freshly-sorted slice from the same
-// underlying data without re-reading disk.
+// loadStatusEffectsCached returns the sorted slice of status effects and, as
+// a side-effect, populates g.statusEffects (the code→effect map). Both the
+// slice and the map are cached on the Generator after the first call;
+// subsequent calls return them without touching disk. Important under --all,
+// where the same Generator services 15 civs plus common.md.
 func (g *Generator) loadStatusEffectsCached() ([]statusEffect, error) {
+	if g.statusEffectsList != nil {
+		return g.statusEffectsList, nil
+	}
 	list, err := loadStatusEffects(g.Layout.StatusEffects())
 	if err != nil {
 		return nil, err
 	}
-	if g.statusEffects == nil {
-		g.statusEffects = make(map[string]statusEffect, len(list))
-		for _, e := range list {
-			g.statusEffects[e.Code] = e
-		}
+	g.statusEffects = make(map[string]statusEffect, len(list))
+	for _, e := range list {
+		g.statusEffects[e.Code] = e
 	}
+	g.statusEffectsList = list
 	return list, nil
 }
 
