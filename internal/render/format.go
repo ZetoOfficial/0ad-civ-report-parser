@@ -235,3 +235,136 @@ func FormatGenericName(e *tmpl.Element) string {
 	}
 	return spec
 }
+
+// formatAttackBonuses returns a formatted list of attack bonuses from a Melee/Ranged/Capture node.
+// Each bonus with Classes and a valid Multiplier is rendered as "×<mul> vs <c1>+<c2>+...".
+func formatAttackBonuses(modeEl *tmpl.Element) string {
+	if modeEl == nil {
+		return ""
+	}
+	bonuses := modeEl.Get("Bonuses")
+	if bonuses == nil {
+		return ""
+	}
+	var parts []string
+	for _, child := range bonuses.Children {
+		classes := child.GetTokens("Classes")
+		if len(classes) == 0 {
+			continue
+		}
+		mul, ok := tmpl.ParseFloatTrim(child.GetText("Multiplier"))
+		if !ok {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("×%s vs %s", i18n.FormatNumber(mul), strings.Join(classes, "+")))
+	}
+	return strings.Join(parts, ", ")
+}
+
+// formatPreferredClasses returns the PreferredClasses tokens from a Melee/Ranged node joined by ", ".
+func formatPreferredClasses(modeEl *tmpl.Element) string {
+	if modeEl == nil {
+		return ""
+	}
+	tokens := modeEl.GetTokens("PreferredClasses")
+	return strings.Join(tokens, ", ")
+}
+
+// formatSplash formats the Splash sub-element of a Melee/Ranged node.
+func formatSplash(modeEl *tmpl.Element) string {
+	if modeEl == nil {
+		return ""
+	}
+	splash := modeEl.Get("Splash")
+	if splash == nil {
+		return ""
+	}
+
+	var dmgs []string
+	for _, t := range []string{"Hack", "Pierce", "Crush", "Fire", "Poison"} {
+		v, ok := tmpl.ParseFloatTrim(splash.GetText("Damage/" + t))
+		if !ok || v == 0 {
+			continue
+		}
+		dmgs = append(dmgs, fmt.Sprintf("%s %s", i18n.DamageType(t), i18n.FormatNumber(v)))
+	}
+
+	shapeRaw := splash.GetText("Shape")
+	var shape string
+	switch shapeRaw {
+	case "Linear":
+		shape = "линия"
+	default:
+		// Circular or empty → "круг"; anything else echoed raw
+		if shapeRaw == "" || shapeRaw == "Circular" {
+			shape = "круг"
+		} else {
+			shape = shapeRaw
+		}
+	}
+
+	rangeV := splash.GetText("Range")
+	ffRaw := splash.GetText("FriendlyFire")
+	var ffText string
+	if strings.EqualFold(ffRaw, "false") {
+		ffText = "не задевает союзников"
+	} else {
+		ffText = "задевает союзников"
+	}
+
+	if len(dmgs) == 0 && rangeV == "" {
+		return ""
+	}
+
+	var sb strings.Builder
+	if len(dmgs) > 0 {
+		sb.WriteString(strings.Join(dmgs, ", "))
+		sb.WriteString(", ")
+	}
+	sb.WriteString(fmt.Sprintf("%s R=%s, %s", shape, rangeV, ffText))
+
+	if bonuses := formatAttackBonuses(splash); bonuses != "" {
+		sb.WriteString(", ")
+		sb.WriteString(bonuses)
+	}
+
+	return sb.String()
+}
+
+// formatCaptureAttack formats the Capture attack from the parent Attack node.
+func formatCaptureAttack(attackEl *tmpl.Element) string {
+	if attackEl == nil {
+		return ""
+	}
+	cap := attackEl.Get("Capture")
+	if cap == nil {
+		return ""
+	}
+	rate, ok := tmpl.ParseFloatTrim(cap.GetText("Capture"))
+	if !ok {
+		return ""
+	}
+
+	out := fmt.Sprintf("захват %s", i18n.FormatNumber(rate))
+
+	rangeV := cap.GetText("MaxRange")
+	repeat := cap.GetText("RepeatTime")
+	if rangeV != "" && repeat != "" {
+		out += fmt.Sprintf(" (%sм, %sмс)", rangeV, repeat)
+	} else if rangeV != "" {
+		out += fmt.Sprintf(" (%sм)", rangeV)
+	} else if repeat != "" {
+		out += fmt.Sprintf(" (%sмс)", repeat)
+	}
+
+	if bonuses := formatAttackBonuses(cap); bonuses != "" {
+		out += "; " + bonuses
+	}
+
+	restricted := cap.GetTokens("RestrictedClasses")
+	if len(restricted) > 0 {
+		out += "; исключает: " + strings.Join(restricted, ", ")
+	}
+
+	return out
+}
