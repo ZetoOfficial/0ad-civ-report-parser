@@ -33,6 +33,8 @@ func DamageType(key string) string {
 		return "Capture"
 	case "Fire":
 		return "Fire"
+	case "Poison":
+		return "Poison"
 	}
 	return key
 }

@@ -19,6 +19,7 @@ type Generator struct {
 	Catalog        *tech.Catalog
 	Index          *tech.Index // lazily built in Generate; set manually in tests if needed
 	IncludeHistory bool
+	statusEffects  map[string]statusEffect // code → effect, lazily loaded in Generate
 }
 
 // Output holds the rendered markdown bodies for one civilization.
@@ -79,6 +80,17 @@ func (g *Generator) Generate(civInfo civdata.CivCode) (Output, error) {
 	teamBonus, err := aura.LoadTeamBonus(g.Layout, civInfo.Code)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return Output{}, err
+	}
+
+	if g.statusEffects == nil {
+		list, err := loadStatusEffects(g.Layout.StatusEffects())
+		if err != nil {
+			return Output{}, err
+		}
+		g.statusEffects = make(map[string]statusEffect, len(list))
+		for _, e := range list {
+			g.statusEffects[e.Code] = e
+		}
 	}
 
 	return Output{

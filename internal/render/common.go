@@ -193,5 +193,17 @@ func (g *Generator) commonStatusEffects(sb *strings.Builder) error {
 			escapeTable(e.ApplierTooltip), escapeTable(e.ReceiverTooltip))
 	}
 	fmt.Fprintln(sb)
+	// Per-status sub-blocks with anchors for cross-file links.
+	// GitHub auto-lowercases heading anchors: ### Poisoned → #poisoned.
+	for _, e := range es {
+		fmt.Fprintf(sb, "### %s\n\n", e.StatusName)
+		if e.ApplierTooltip != "" {
+			fmt.Fprintf(sb, "> **Применяющему:** %s\n", e.ApplierTooltip)
+		}
+		if e.ReceiverTooltip != "" {
+			fmt.Fprintf(sb, "> **Пострадавшему:** %s\n", e.ReceiverTooltip)
+		}
+		fmt.Fprintln(sb)
+	}
 	return nil
 }

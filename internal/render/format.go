@@ -330,6 +330,88 @@ func formatSplash(modeEl *tmpl.Element) string {
 	return sb.String()
 }
 
+// formatApplyStatuses returns a formatted slice of ApplyStatus entries from a
+// Melee/Ranged attack-mode element.  byCode maps status code (e.g. "Poisoned")
+// to its statusEffect descriptor loaded from data/status_effects/.
+//
+// Entries with zero/negative Duration are skipped (no-op).  Entries where
+// BlockChance > 0 AND Duration <= 0 (the template_unit_siege default) are also
+// skipped.
+func formatApplyStatuses(modeEl *tmpl.Element, byCode map[string]statusEffect) []string {
+	if modeEl == nil {
+		return nil
+	}
+	as := modeEl.Get("ApplyStatus")
+	if as == nil {
+		return nil
+	}
+	var out []string
+	for _, child := range as.Children {
+		code := child.Name
+
+		// BlockChance edge-case: skip no-op defaults (BlockChance>0 and Duration<=0).
+		blockRaw := child.GetText("BlockChance")
+		durRaw := child.GetText("Duration")
+
+		if blockRaw != "" {
+			bc, ok := tmpl.ParseFloatTrim(blockRaw)
+			if ok && bc > 0 {
+				dur, durOK := tmpl.ParseFloatTrim(durRaw)
+				if durRaw == "" || !durOK || dur <= 0 {
+					continue
+				}
+			}
+		}
+
+		// Skip any entry with zero or missing Duration.
+		dur, durOK := tmpl.ParseFloatTrim(durRaw)
+		if !durOK || dur <= 0 {
+			continue
+		}
+		durationSec := dur / 1000.0
+
+		// Resolve display name.
+		name := code
+		if effect, ok := byCode[code]; ok {
+			name = effect.StatusName
+		}
+
+		// Build damage string.
+		var dmgParts []string
+		for _, t := range []string{"Hack", "Pierce", "Crush", "Fire", "Poison"} {
+			v, ok := tmpl.ParseFloatTrim(child.GetText("Damage/" + t))
+			if !ok || v == 0 {
+				continue
+			}
+			dmgParts = append(dmgParts, fmt.Sprintf("%s %s", i18n.DamageType(t), i18n.FormatNumber(v)))
+		}
+		dmgStr := strings.Join(dmgParts, ", ")
+
+		// Interval in seconds (optional).
+		intervalSec := ""
+		if intervalRaw := child.GetText("Interval"); intervalRaw != "" {
+			if iv, ok := tmpl.ParseFloatTrim(intervalRaw); ok && iv > 0 {
+				intervalSec = i18n.FormatNumber(iv / 1000.0)
+			}
+		}
+
+		anchor := strings.ToLower(code)
+		durationStr := i18n.FormatNumber(durationSec)
+
+		var line string
+		switch {
+		case dmgStr != "" && intervalSec != "":
+			line = fmt.Sprintf("%s: %s/%sс × %sс (см. common.md#%s)", name, dmgStr, intervalSec, durationStr, anchor)
+		case dmgStr == "" && intervalSec != "":
+			line = fmt.Sprintf("%s: каждые %sс × %sс (см. common.md#%s)", name, intervalSec, durationStr, anchor)
+		default:
+			line = fmt.Sprintf("%s: %s × %sс (см. common.md#%s)", name, dmgStr, durationStr, anchor)
+		}
+		out = append(out, line)
+	}
+	return out
+}
+
 // formatCaptureAttack formats the Capture attack from the parent Attack node.
 // The parameter is the parent Attack element (not Capture directly) because
 // call sites already hold the Attack node in scope.

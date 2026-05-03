@@ -1,6 +1,7 @@
 package render
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -327,4 +328,151 @@ func TestFormatCaptureAttack(t *testing.T) {
 		})
 	}
 }
+
+func TestFormatApplyStatuses(t *testing.T) {
+	byCode := map[string]statusEffect{
+		"Poisoned": {Code: "Poisoned", StatusName: "Poisoned"},
+		"Burning":  {Code: "Burning", StatusName: "Burning"},
+	}
+
+	// Helper to build an ApplyStatus child element.
+	makePoisoned := func(dmgPoison, interval, duration string) *tmpl.Element {
+		children := []*tmpl.Element{}
+		if dmgPoison != "" {
+			children = append(children, mkEl("Damage", mkText("Poison", dmgPoison)))
+		}
+		if interval != "" {
+			children = append(children, mkText("Interval", interval))
+		}
+		if duration != "" {
+			children = append(children, mkText("Duration", duration))
+		}
+		return mkEl("Poisoned", children...)
+	}
+
+	makeBurning := func(dmgFire, interval, duration string) *tmpl.Element {
+		children := []*tmpl.Element{}
+		if dmgFire != "" {
+			children = append(children, mkEl("Damage", mkText("Fire", dmgFire)))
+		}
+		if interval != "" {
+			children = append(children, mkText("Interval", interval))
+		}
+		if duration != "" {
+			children = append(children, mkText("Duration", duration))
+		}
+		return mkEl("Burning", children...)
+	}
+
+	tests := []struct {
+		name   string
+		modeEl *tmpl.Element
+		want   []string
+	}{
+		{
+			name:   "no apply status node",
+			modeEl: mkEl("Ranged"),
+			want:   nil,
+		},
+		{
+			name: "Maur Maiden Archer canonical",
+			modeEl: mkEl("Ranged",
+				mkEl("ApplyStatus",
+					makePoisoned("2", "600", "3600"),
+				),
+			),
+			want: []string{"Poisoned: Poison 2/0.6с × 3.6с (см. common.md#poisoned)"},
+		},
+		{
+			name: "Iber Champion Cavalry Burning",
+			modeEl: mkEl("Ranged",
+				mkEl("ApplyStatus",
+					makeBurning("2", "3000", "9000"),
+				),
+			),
+			want: []string{"Burning: Fire 2/3с × 9с (см. common.md#burning)"},
+		},
+		{
+			name: "BlockChance no-op default",
+			modeEl: mkEl("Ranged",
+				mkEl("ApplyStatus",
+					mkEl("Poisoned",
+						mkText("BlockChance", "1"),
+						mkText("Duration", "0"),
+					),
+				),
+			),
+			want: nil,
+		},
+		{
+			name: "zero duration without BlockChance",
+			modeEl: mkEl("Ranged",
+				mkEl("ApplyStatus",
+					mkEl("Poisoned",
+						mkEl("Damage", mkText("Poison", "5")),
+						mkText("Interval", "1000"),
+						mkText("Duration", "0"),
+					),
+				),
+			),
+			want: nil,
+		},
+		{
+			name: "multiple statuses",
+			modeEl: mkEl("Ranged",
+				mkEl("ApplyStatus",
+					makePoisoned("2", "600", "3600"),
+					makeBurning("3", "1000", "5000"),
+				),
+			),
+			want: []string{
+				"Poisoned: Poison 2/0.6с × 3.6с (см. common.md#poisoned)",
+				"Burning: Fire 3/1с × 5с (см. common.md#burning)",
+			},
+		},
+		{
+			name: "missing Damage",
+			modeEl: mkEl("Ranged",
+				mkEl("ApplyStatus",
+					mkEl("Poisoned",
+						mkText("Interval", "1000"),
+						mkText("Duration", "5000"),
+					),
+				),
+			),
+			want: []string{"Poisoned: каждые 1с × 5с (см. common.md#poisoned)"},
+		},
+		{
+			name: "unknown code falls back to raw",
+			modeEl: mkEl("Ranged",
+				mkEl("ApplyStatus",
+					mkEl("Frenzied",
+						mkEl("Damage", mkText("Hack", "10")),
+						mkText("Interval", "500"),
+						mkText("Duration", "2000"),
+					),
+				),
+			),
+			want: []string{"Frenzied: Hack 10/0.5с × 2с (см. common.md#frenzied)"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := formatApplyStatuses(tc.modeEl, byCode)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("formatApplyStatuses() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestFormatApplyStatuses_NilInput covers the nil modeEl branch separately.
+func TestFormatApplyStatuses_NilInput(t *testing.T) {
+	got := formatApplyStatuses(nil, nil)
+	if got != nil {
+		t.Errorf("formatApplyStatuses(nil, nil) = %v, want nil", got)
+	}
+}
+
 
