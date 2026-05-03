@@ -123,7 +123,7 @@
 ### i18n (`internal/i18n/`)
 
 - **`ru.go`** — `ResourceName(food/wood/stone/metal)`, `DamageType(Hack/
-  Pierce/Crush/Capture/Fire)`, `PhaseRequirement(phase_*)`, `FormatNumber`,
+  Pierce/Crush/Capture/Fire/Poison)`, `PhaseRequirement(phase_*)`, `FormatNumber`,
   `FormatPercent`.
 - **`modifier.go`** — `DescribeModification(m)`/`DescribeModifications(mods)`
   + `pathTranslations` (~50 ключей) для перевода путей вида `Health/Max`,
@@ -153,13 +153,26 @@
 - **`renderUnitsDetail`** — приложение, классификация юнитов на 10 групп.
   Для героев — таблица аур по basename hero-файла и токенам в `Auras`.
   Для катафалка — таблица аур из `auras/units/catafalques/`.
+- **`renderUnitBlock`** (после эпика 4a) — детальная 2-колоночная
+  таблица параметров юнита включает: `Сопротивление захвату`,
+  `Сопротивление статус-эффектам` (если поля присутствуют) после
+  строки `Броня (H/P/C)`; для каждого attack-mode (`Melee`/`Ranged`/
+  `Capture`) — строки `Атака (m)`, `Бонусы (m)`, `Предпочитает (m)`,
+  `Брызги (m)`, `Накладывает (m) × N` (по строке на каждый
+  ApplyStatus). `Атака (захват)` пишется всегда, когда у юнита есть
+  `<Attack><Capture>` (даже унаследованный дефолт). Тренировочная
+  таблица (`renderTrains`) остаётся компактной 9-колоночной.
 - **`renderSummary`** — сводная таблица в конце.
 - **`format.go`** — форматтеры одного поля шаблона: `FormatCost`,
   `FormatBuildTime`, `FormatHP`, `FormatArmor`, `FormatArmorHPC`,
   `FormatVision`, `FormatGarrison`, `FormatPopulationBonus`,
   `FormatTerritory`, `FormatMeleeAttack`, `FormatRangedAttack`,
   `FormatAttackShort`, `FormatWalkSpeed`, `FormatPopulation`,
-  `FormatGenericName`.
+  `FormatGenericName`, `FormatCaptureResistance`,
+  `FormatStatusEffectResistance` (эпик 4a).
+  Внутренние помощники для attack-mode: `formatAttackBonuses`,
+  `formatPreferredClasses`, `formatSplash`, `formatCaptureAttack`,
+  `formatApplyStatuses(modeEl, byCode)`.
 
 **Тесты:** `numeric_test.go` (точечная проверка значений после резолва),
 `golden_test.go` (генерация отчёта по `germ`, проверка длины ≥ 700 строк
@@ -246,10 +259,11 @@
   не парсятся.
 - **`SkirmishReplacements`** — поле парсится, но не применяется (вход в
   отчёт берётся из шаблонов цивы, не из skirmish-вариантов).
-- **Бонусы атаки** (`Bonuses/Bonus*` в `<Attack>`) — `+2.5× vs Cavalry`
-  у копейщиков и т.п. не рендерятся.
-- **Splash damage**, **capture details**, **status effects** в атаке —
-  не рендерятся.
+- **Бонусы атаки** ✓ закрыто эпиком 4a — `×2.5 vs Cavalry`
+  у копейщиков рендерится строкой `Бонусы (ближ.)`.
+- **Splash damage**, **capture details**, **status effects** в атаке
+  ✓ закрыто эпиком 4a — `Брызги`, `Атака (захват)`, `Накладывает`
+  per attack-mode.
 - **Loot**, **Upkeep**, **Treasure**, **Resource trickle**, **Resource supply**
   (запас на полях/деревьях), **Resource dropsite labels** — не рендерятся.
 - **Healer** (range/HP/repeat) — не выделяется отдельной таблицей,
@@ -258,7 +272,10 @@
   юнита`) — не рендерятся.
 - **Run speed** — выводится только `WalkSpeed`, `RunMultiplier`/`RunSpeed`
   — нет.
-- **Capture resistance**, **Status effect resistance** — не рендерятся.
+- **Capture resistance**, **Status effect resistance** ✓ закрыто
+  эпиком 4a — `FormatCaptureResistance`,
+  `FormatStatusEffectResistance` (в R28 эти поля отсутствуют в
+  шаблонах, но логика готова к появлению).
 - **`specificName`** технологий и фаз — не используется при рендере.
 - **`requirementsTooltip`** на технологиях — не парсится и не показывается.
 
