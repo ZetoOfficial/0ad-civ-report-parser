@@ -293,10 +293,10 @@ func formatSplash(modeEl *tmpl.Element) string {
 
 	shapeRaw := splash.GetText("Shape")
 	var shape string
-	switch {
-	case shapeRaw == "Linear":
+	switch shapeRaw {
+	case "Linear":
 		shape = "линия"
-	case shapeRaw == "" || shapeRaw == "Circular":
+	case "", "Circular":
 		shape = "круг"
 	default:
 		shape = shapeRaw
