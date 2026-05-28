@@ -1,26 +1,53 @@
 import type { Analysis, ReplayEvent } from "../types";
 
-const KEEP_EVENT_TYPES = new Set(["research", "construct", "resign"]);
+const KEEP_STRUCTURE_SUBSTRINGS = [
+  "wonder", "civic_centre", "fortress",
+  "barracks", "stable", "elephant_stable", "kennel",
+  "range", "embassy", "temple", "workshop",
+  "tower", "wallset", "dock", "market",
+  "library", "archive", "pyramid",
+];
 
-function eventLabel(e: ReplayEvent): string | null {
-  if (!KEEP_EVENT_TYPES.has(e.type)) return null;
+const SIEGE_SUBSTRINGS = [
+  "catapult", "lithobolos", "oxybeles", "scorpio",
+  "ram", "siege_",
+];
+
+function eventLabel(
+  e: ReplayEvent,
+  seenChampion: Set<number>,
+  seenSiege: Set<number>,
+): string | null {
   if (e.type === "resign") return "RESIGN";
+
   const data = e.data as { template?: string } | undefined;
   const tmpl = data?.template ?? "";
+
   if (e.type === "research") {
-    // keep only phase_* techs
     if (tmpl.startsWith("phase_")) return `research ${tmpl}`;
     return null;
   }
+
   if (e.type === "construct") {
-    // keep significant structures only
-    const keep = [
-      "wonder", "civic_centre", "fortress", "barracks", "stable",
-      "elephant_stable", "kennel", "embassy", "temple", "tower", "wallset",
-    ];
-    if (keep.some((k) => tmpl.includes(k))) return `construct ${tmpl}`;
+    if (KEEP_STRUCTURE_SUBSTRINGS.some((k) => tmpl.includes(k))) {
+      return `construct ${tmpl}`;
+    }
     return null;
   }
+
+  if (e.type === "train") {
+    if (tmpl.includes("/hero_")) return `train hero ${tmpl}`;
+    if (tmpl.includes("champion") && !seenChampion.has(e.player)) {
+      seenChampion.add(e.player);
+      return `train first champion ${tmpl}`;
+    }
+    if (SIEGE_SUBSTRINGS.some((k) => tmpl.includes(k)) && !seenSiege.has(e.player)) {
+      seenSiege.add(e.player);
+      return `train first siege ${tmpl}`;
+    }
+    return null;
+  }
+
   return null;
 }
 
@@ -36,11 +63,18 @@ export function BuildOrderList({ analysis }: Props) {
   const playerName: Record<number, string> = {};
   for (const p of analysis.players) playerName[p.id] = p.name;
 
+  const seenChampion = new Set<number>();
+  const seenSiege = new Set<number>();
   const rows: { time: string; player: string; event: string }[] = [];
+
   for (const e of analysis.events) {
-    const label = eventLabel(e);
+    const label = eventLabel(e, seenChampion, seenSiege);
     if (!label) continue;
-    rows.push({ time: fmtTime(e.t), player: playerName[e.player] ?? `p${e.player}`, event: label });
+    rows.push({
+      time: fmtTime(e.t),
+      player: playerName[e.player] ?? `p${e.player}`,
+      event: label,
+    });
   }
 
   return (
