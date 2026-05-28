@@ -70,6 +70,11 @@ func (h *handlers) buildList() ([]replayListItem, error) {
 		if err != nil {
 			continue
 		}
+		// Hide replays without sequences — without them we can't show the
+		// charts that justify being in the list.
+		if !hasSequences(a) {
+			continue
+		}
 		items = append(items, replayListItem{
 			Dir:        e.Name(),
 			MatchID:    a.Game.MatchID,
@@ -87,6 +92,18 @@ func (h *handlers) buildList() ([]replayListItem, error) {
 	h.cachedAt = time.Now()
 	h.mu.Unlock()
 	return items, nil
+}
+
+// hasSequences reports whether any player has time-series data attached.
+// Used to filter the list to only replays that have been regenerated through
+// the headless-replay sandbox.
+func hasSequences(a *output.Analysis) bool {
+	for _, pm := range a.Metrics.Players {
+		if pm.Sequences != nil && len(pm.Sequences.Time) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // resolveOutcome picks the most informative outcome: prefer the first

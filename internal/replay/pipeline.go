@@ -17,6 +17,7 @@ import (
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/events"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/metadata"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/output"
+	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/sandbox"
 )
 
 // Run parses replayDir and returns Analysis. It writes analysis.json next to
@@ -66,7 +67,7 @@ func Run(replayDir string) (*output.Analysis, error) {
 	}
 	game.DurationMs = max(durationMs, meta.TimeElapsed)
 
-	a := buildAnalysis(game, players, meta, evs)
+	a := buildAnalysis(game, players, meta, evs, filepath.Base(replayDir))
 
 	if err := output.Write(outPath, a); err != nil {
 		return nil, fmt.Errorf("replay: write analysis: %w", err)
@@ -196,12 +197,16 @@ func internalEvents(evs []output.Event) []events.Event {
 	return out
 }
 
-func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metadata, evs []output.Event) *output.Analysis {
+func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metadata, evs []output.Event, replayBasename string) *output.Analysis {
 	tev := internalEvents(evs)
 	phaseT := analytics.PhaseTimings(tev)
 	eng := analytics.Engagements(tev, 3000)
 	pg := analytics.PanicGarrison(tev)
-	density := analytics.ActionDensity(tev, 30)
+	// Optional: sequences from headless-replay sandbox. nil if not yet regenerated.
+	seqs, sandboxErr := sandbox.Load(replayBasename)
+	if sandboxErr != nil {
+		fmt.Fprintf(os.Stderr, "replay: sandbox load %s: %v\n", replayBasename, sandboxErr)
+	}
 
 	resignByPlayer := map[int]bool{}
 	for _, e := range tev {
@@ -265,6 +270,20 @@ func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metad
 			PhaseTimings: pt,
 			Engagements:  es,
 			Anomalies:    an,
+			Sequences:    seqs[p],
+		}
+	}
+	// Also surface players that only appear in sequences (e.g. allies who
+	// issued no commands but show up in metadata.json).
+	for p := range seqs {
+		if _, ok := metricsByPlayer[p]; ok {
+			continue
+		}
+		metricsByPlayer[p] = output.PlayerMetrics{
+			PhaseTimings: map[string]int{},
+			Engagements:  []output.Engagement{},
+			Anomalies:    []output.Anomaly{},
+			Sequences:    seqs[p],
 		}
 	}
 
@@ -275,7 +294,7 @@ func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metad
 		Events:        evs,
 		Snapshots:     []output.Snapshot{},
 		FinalState:    output.FinalState{Players: finalByPlayer},
-		Metrics:       output.Metrics{Players: metricsByPlayer, Density: density},
+		Metrics:       output.Metrics{Players: metricsByPlayer},
 	}
 }
 

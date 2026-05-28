@@ -3,9 +3,9 @@ import { useParams } from "react-router-dom";
 import { getReplay } from "../api";
 import type { Analysis } from "../types";
 import { PlayerChip } from "../components/PlayerChip";
-import { BuildOrderList } from "../components/BuildOrderList";
 import { AnomalyList } from "../components/AnomalyList";
-import { DensityChart } from "../components/DensityChart";
+import { PopulationChart } from "../components/PopulationChart";
+import { CombatChart } from "../components/CombatChart";
 import { formatDuration } from "../utils";
 
 export function ReplayPage() {
@@ -62,14 +62,15 @@ export function ReplayPage() {
         </div>
       </section>
 
+
       <section className="bg-white p-4 rounded-lg border border-gray-200">
-        <h2 className="font-semibold mb-2">Плотность действий (30 сек)</h2>
-        <DensityChart analysis={a} />
+        <h2 className="font-semibold mb-2">Популяция, работяги, армия (живых)</h2>
+        <PopulationChart analysis={a} />
       </section>
 
       <section className="bg-white p-4 rounded-lg border border-gray-200">
-        <h2 className="font-semibold mb-2">Build order (значимые события)</h2>
-        <BuildOrderList analysis={a} />
+        <h2 className="font-semibold mb-2">Бой: убитые / потерянные / обмен по стоимости</h2>
+        <CombatChart analysis={a} />
       </section>
 
       <section className="bg-white p-4 rounded-lg border border-gray-200">

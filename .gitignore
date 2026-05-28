@@ -36,3 +36,12 @@ testdata/golden/germans_structree.md
 # not embed any HTML/JS/CSS — frontend is served by vite (dev/preview).
 web/node_modules/
 web/dist/
+
+# Pyrogenesis profiler artifacts: dropped into cwd when running
+# `pyrogenesis -replay=` headless. Large (~30 MB), not interesting.
+profile.txt
+profile2.jsonp
+
+# Headless-replay sandbox cache (regenerated metadata.json with
+# sequences). Lives under /tmp by default; defensive in case redirected here.
+tmp/

@@ -52,20 +52,51 @@ export interface Anomaly {
   details?: Record<string, unknown>;
 }
 
-export interface DensityBin {
-  t_sec: number;
-  counts: Record<string, number>;
+// ClassSeries: per-class cumulative time-series. Each array has the same
+// length as Sequences.time.
+export type ClassSeries = Record<string, number[]>;
+
+export interface Sequences {
+  time: number[]; // x-axis, seconds from game start (~30s sampling)
+
+  population_count: number[];
+  percent_map_explored: number[];
+  percent_map_controlled: number[];
+
+  units_trained: ClassSeries;
+  units_lost: ClassSeries;
+  enemy_units_killed: ClassSeries;
+  units_captured: ClassSeries;
+  buildings_constructed: ClassSeries;
+  buildings_lost: ClassSeries;
+  enemy_buildings_destroyed: ClassSeries;
+  buildings_captured: ClassSeries;
+
+  units_lost_value: number[];
+  enemy_units_killed_value: number[];
+  units_captured_value: number[];
+  buildings_lost_value: number[];
+  enemy_buildings_destroyed_value: number[];
+  buildings_captured_value: number[];
+
+  trade_income: number[];
+  tributes_sent: number[];
+  tributes_received: number[];
+  loot_collected: number[];
+  treasures_collected: number[];
+  successful_bribes: number[];
+  failed_bribes: number[];
 }
 
 export interface PlayerMetrics {
   phase_timings: Record<string, number>;
   engagements: Engagement[];
   anomalies: Anomaly[];
+  sequences?: Sequences | null;
 }
 
 export interface Metrics {
   players: Record<string, PlayerMetrics>;
-  action_density: DensityBin[];
 }
 
 export interface GameInfo {

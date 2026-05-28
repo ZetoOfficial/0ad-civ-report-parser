@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/output"
 )
 
 func TestRunOnRealFixture(t *testing.T) {
@@ -17,8 +19,8 @@ func TestRunOnRealFixture(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if a.SchemaVersion != 1 {
-		t.Errorf("SchemaVersion = %d", a.SchemaVersion)
+	if a.SchemaVersion != output.SchemaVersion {
+		t.Errorf("SchemaVersion = %d, want %d", a.SchemaVersion, output.SchemaVersion)
 	}
 	if a.Game.MatchID == "" {
 		t.Error("MatchID empty")

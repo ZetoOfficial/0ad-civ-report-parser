@@ -29,8 +29,8 @@ func TestWriteRoundtrip(t *testing.T) {
 	if err := json.Unmarshal(raw, &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.SchemaVersion != 1 {
-		t.Errorf("SchemaVersion = %d, want 1", got.SchemaVersion)
+	if got.SchemaVersion != SchemaVersion {
+		t.Errorf("SchemaVersion = %d, want %d", got.SchemaVersion, SchemaVersion)
 	}
 	if got.Game.MatchID != "ABC" {
 		t.Errorf("MatchID = %q, want ABC", got.Game.MatchID)

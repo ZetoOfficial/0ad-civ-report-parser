@@ -79,21 +79,3 @@ func TestPanicGarrisonNoFalsePositive(t *testing.T) {
 	}
 }
 
-func TestActionDensity(t *testing.T) {
-	evs := []events.Event{
-		mkResearch(2, 5000, "x"),                                                          // bin 0 research
-		mkAttack(2, 15000, 1, 1),                                                          // bin 0 military
-		mkResearch(2, 35000, "y"),                                                         // bin 1 research
-		{TMs: 65000, Player: 2, Type: events.TypeConstruct, Data: events.ConstructData{}}, // bin 2 build
-	}
-	out := ActionDensity(evs, 30)
-	if len(out) != 3 {
-		t.Fatalf("bins = %d, want 3", len(out))
-	}
-	if out[0].Counts["research"] != 1 || out[0].Counts["military"] != 1 {
-		t.Errorf("bin0 = %+v", out[0].Counts)
-	}
-	if out[2].Counts["build"] != 1 {
-		t.Errorf("bin2 = %+v", out[2].Counts)
-	}
-}
