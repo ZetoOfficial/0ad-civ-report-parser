@@ -104,3 +104,44 @@ maur, pers, ptol, rome, sele, spart.
 
 `/Users/zeto/Projects/study/0ad/binaries/data/mods/public` (READ-ONLY).
 Подкаталоги — см. `docs/sources.md`.
+
+## replayreport
+
+`replayreport` парсит реплеи 0 A.D. (commands.txt + metadata.json), пишет
+`analysis.json` рядом с replay-dir, и поднимает локальный дашик с графиком
+плотности команд, фазовыми маркерами, build-order и аномалиями.
+
+```bash
+make replayreport                            # → bin/replayreport
+./bin/replayreport                           # сканит ~/Library/Application Support/0ad/replays/0.28.0/
+                                             # → http://localhost:8080
+./bin/replayreport <replay-dir>              # парсит один replay (без HTTP)
+./bin/replayreport --check --all             # CI-режим: exit 2 если хоть один реплей упал
+./bin/replayreport --replays /path/to/dir    # альтернативный корень
+./bin/replayreport --addr :9000              # альтернативный порт
+```
+
+Для каждого replay-dir пишется `analysis.json` (schema v1) рядом с
+`commands.txt`. Кэш по mtime: если `analysis.json` свежее `commands.txt` —
+не парсим повторно (старт дашика на 80+ реплеях за секунды).
+
+Replay-dir без `metadata.json` пропускаются (игра упала / не дошла до
+summary screen). В v1 это ожидаемое поведение.
+
+### Что в дашике
+
+- **Список партий** — карточки с датой, картой, длительностью, цивами и исходом.
+- **Страница партии** — header + игроки с финальным состоянием + Plotly-график
+  плотности команд (30-сек бины × 5 категорий) с маркерами фаз (пунктир)
+  и крупных боёв (сплошные красные линии) + build-order + аномалии.
+
+### Что НЕ в v1
+
+Time-series графики population / resources / active gatherers — `metadata.json`
+реальных реплеев не содержит `sequences` (0ad пишет их только при показе
+summary screen, который пользователь обычно скипает). Замена — `Chart 1`
+(плотность команд). См. `docs/superpowers/specs/2026-05-28-replay-analyzer-mvp-design.md`
+и `docs/superpowers/plans/2026-05-28-replay-analyzer-mvp.md` для деталей.
+
+Также вне scope v1: APM/EAPM, кросс-партийная аналитика, real-time mode,
+markdown-отчёт по партии, idle worker detection.

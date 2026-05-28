@@ -306,3 +306,41 @@ make clean                          # удаляет *_overview.md, *_structree.
   "out_dir": "out"
 }
 ```
+
+## Replay analyzer (`cmd/replayreport`, `internal/replay/`)
+
+Vertical MVP. CLI `replayreport` парсит `commands.txt` + `metadata.json`
+из replay-dir, пишет `analysis.json` (schema v1) рядом, поднимает дашик
+на :8080 (templ + htmx + Plotly-JS).
+
+**Архитектура:** stages — pure functions, единственный канал между ними —
+`output.Event`. Output JSON со стабильной schema (`schema_version: 1`).
+Reuse существующих `internal/{tmpl,civdata,tech,aura,i18n}` **не используется**
+в MVP — replay parser изолирован.
+
+**Пакеты:**
+- `internal/replay/commands/` — streaming line-reader `commands.txt`
+- `internal/replay/metadata/` — loader `metadata.json` (PlayerState scalars)
+- `internal/replay/events/` — типизированный декодер cmd-строк
+- `internal/replay/analytics/` — phase timings, engagements, panic_garrison, action density
+- `internal/replay/output/` — schema + atomic JSON writer
+- `internal/replay/pipeline.go` — `Run(replayDir)` оркестратор + mtime-кеш
+- `internal/replay/webui/` — HTTP сервер (templ + htmx + embedded Plotly)
+- `cmd/replayreport/main.go` — CLI
+
+**⚠ Time-series графики не реализованы в v1.** `metadata.json` реальных
+пользовательских реплеев не содержит `sequences` (массивы по времени) —
+проверено на всех ~85 реплеях. 0ad пишет sequences только при показе
+summary screen, а пользователь обычно квитает в лобби. Замена — Plotly
+stacked-bar action density chart по command stream + phase markers +
+engagement markers. Reducer-симуляция снапшотов отложена в фазу 3
+(real-time). См. `docs/superpowers/specs/2026-05-28-replay-analyzer-mvp-design.md`
+и `docs/superpowers/plans/2026-05-28-replay-analyzer-mvp.md`.
+
+**Discovery items (разрешено во время реализации):**
+- `metadata.Color` — float64 (нормализованные 0-1), не int (0-255) в R28
+- `researchedTechs` — может быть object `{tech: bool}` или массив `[tech, ...]`
+- `resourceCounts` — может содержать float64 (вода/еда накапливается дробно)
+- `PlayerData.AIDiff` — quoted string `"3"`, не int
+- Outcome priority: `resign` event > `metadata.playerStates[P].state`
+- Player ID в `cmd <P>` — 1-индексация (gaia=0 не пишет команд)
