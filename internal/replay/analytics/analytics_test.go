@@ -53,7 +53,7 @@ func TestEngagementsGroups(t *testing.T) {
 
 func TestPanicGarrison(t *testing.T) {
 	var evs []events.Event
-	for i := int64(0); i < 5; i++ {
+	for i := range int64(5) {
 		evs = append(evs, mkGarrison(2, 10000+i*400, 77))
 	}
 	out := PanicGarrison(evs)
