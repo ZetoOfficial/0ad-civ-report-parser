@@ -4,7 +4,8 @@ import "fmt"
 
 import "github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/output"
 
-templ Replay(a *output.Analysis, buildOrder []BuildOrderRow, anomalies []AnomalyRow) {
+templ Replay(a *output.Analysis, buildOrder []BuildOrderRow, anomalies []AnomalyRow,
+	chartData, phaseMarkers, engagementMarkers any) {
 	@Layout(fmt.Sprintf("Replay %s", a.Game.MatchID)) {
 		<h1>{ a.Game.Map }</h1>
 		<section class="header-meta">
@@ -29,22 +30,14 @@ templ Replay(a *output.Analysis, buildOrder []BuildOrderRow, anomalies []Anomaly
 				</div>
 			}
 		</section>
-		<section class="density-placeholder">
-			<h2>Плотность действий (30-сек бины)</h2>
-			<p>График в Task 9. Пока — таблица:</p>
-			<table>
-				<tr><th>t (сек)</th><th>military</th><th>build</th><th>research</th><th>economy</th><th>other</th></tr>
-				for _, b := range a.Metrics.Density {
-					<tr>
-						<td>{ fmt.Sprint(b.TSec) }</td>
-						<td>{ fmt.Sprint(b.Counts["military"]) }</td>
-						<td>{ fmt.Sprint(b.Counts["build"]) }</td>
-						<td>{ fmt.Sprint(b.Counts["research"]) }</td>
-						<td>{ fmt.Sprint(b.Counts["economy"]) }</td>
-						<td>{ fmt.Sprint(b.Counts["other"]) }</td>
-					</tr>
-				}
-			</table>
+		<section class="density-chart">
+			<h2>Плотность действий (30 сек)</h2>
+			<div id="chart" style="width:100%;height:360px"></div>
+			@templ.JSONScript("density-data", chartData)
+			@templ.JSONScript("phase-data", phaseMarkers)
+			@templ.JSONScript("eng-data", engagementMarkers)
+			<script src="/static/plotly.min.js"></script>
+			<script src="/static/replay-chart.js"></script>
 		</section>
 		<aside class="build-order">
 			<h2>Build order</h2>

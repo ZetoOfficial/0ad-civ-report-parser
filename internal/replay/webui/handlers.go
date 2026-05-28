@@ -39,7 +39,10 @@ func (h *handlers) replay(w http.ResponseWriter, r *http.Request) {
 	_ = dir
 	bo := buildOrderRows(a)
 	an := anomalyRows(a)
-	_ = templates.Replay(a, bo, an).Render(r.Context(), w)
+	chartData := buildDensityChartData(a)
+	phaseMarkers := buildPhaseMarkers(a)
+	engMarkers := buildEngagementMarkers(a)
+	_ = templates.Replay(a, bo, an, chartData, phaseMarkers, engMarkers).Render(r.Context(), w)
 }
 
 func (h *handlers) loadAllCards() []templates.ReplayCard {
@@ -151,4 +154,61 @@ func anomalyRows(a *output.Analysis) []templates.AnomalyRow {
 		}
 	}
 	return rows
+}
+
+type densityTrace struct {
+	Name string `json:"name"`
+	X    []int  `json:"x"`
+	Y    []int  `json:"y"`
+}
+
+type phaseMarker struct {
+	X     int    `json:"x"`
+	Label string `json:"label"`
+}
+
+type engMarker struct {
+	X    int `json:"x"`
+	Size int `json:"size"`
+}
+
+func buildDensityChartData(a *output.Analysis) []densityTrace {
+	cats := []string{"military", "build", "research", "economy", "other"}
+	x := make([]int, len(a.Metrics.Density))
+	for i, b := range a.Metrics.Density {
+		x[i] = b.TSec
+	}
+	out := make([]densityTrace, 0, len(cats))
+	for _, c := range cats {
+		y := make([]int, len(a.Metrics.Density))
+		for i, b := range a.Metrics.Density {
+			y[i] = b.Counts[c]
+		}
+		out = append(out, densityTrace{Name: c, X: x, Y: y})
+	}
+	return out
+}
+
+func buildPhaseMarkers(a *output.Analysis) []phaseMarker {
+	var out []phaseMarker
+	for _, m := range a.Metrics.Players {
+		for name, t := range m.PhaseTimings {
+			out = append(out, phaseMarker{X: t, Label: name})
+		}
+	}
+	return out
+}
+
+func buildEngagementMarkers(a *output.Analysis) []engMarker {
+	const minPeak = 5
+	var out []engMarker
+	for _, m := range a.Metrics.Players {
+		for _, e := range m.Engagements {
+			if e.PeakUnits < minPeak {
+				continue
+			}
+			out = append(out, engMarker{X: e.TStartSec, Size: e.PeakUnits})
+		}
+	}
+	return out
 }
