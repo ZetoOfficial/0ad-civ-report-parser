@@ -19,7 +19,7 @@ type Event struct {
 	TMs    int64       // ms from game start
 	Player int         // 1-based; 0 = gaia (won't occur)
 	Type   string      // one of Type* constants
-	Data   interface{} // type-specific payload below
+	Data   any // type-specific payload below
 }
 
 type TrainData struct {
