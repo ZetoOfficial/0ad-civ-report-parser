@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { listReplays } from "../api";
 import type { ReplayListItem } from "../types";
 import { PlayerChip } from "../components/PlayerChip";
+import { formatDuration } from "../utils";
 
 function formatDate(unix: number): string {
   if (!unix) return "—";
@@ -11,18 +12,16 @@ function formatDate(unix: number): string {
   });
 }
 
-function formatDuration(ms: number): string {
-  const min = Math.floor(ms / 60000);
-  const sec = Math.floor((ms % 60000) / 1000);
-  return `${min}:${sec.toString().padStart(2, "0")}`;
-}
-
 export function IndexPage() {
   const [items, setItems] = useState<ReplayListItem[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    listReplays().then(setItems).catch((e) => setErr(String(e)));
+    const ac = new AbortController();
+    listReplays(ac.signal)
+      .then((x) => { if (!ac.signal.aborted) setItems(x); })
+      .catch((e) => { if (!ac.signal.aborted) setErr(String(e)); });
+    return () => ac.abort();
   }, []);
 
   if (err) return <p className="text-red-600">Error: {err}</p>;

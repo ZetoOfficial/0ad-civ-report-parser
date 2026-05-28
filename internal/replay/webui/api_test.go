@@ -26,8 +26,8 @@ func TestListReplaysEmptyRoot(t *testing.T) {
 		t.Errorf("Content-Type = %q", ct)
 	}
 	body := strings.TrimSpace(w.Body.String())
-	if body != "null" && body != "[]" {
-		t.Errorf("body = %q, want null or []", body)
+	if body != "[]" {
+		t.Errorf("body = %q, want []", body)
 	}
 }
 
@@ -92,16 +92,13 @@ func TestGetReplayFound(t *testing.T) {
 	}
 }
 
-func TestSpaFallback(t *testing.T) {
+func TestNonAPIReturns404(t *testing.T) {
 	dir := t.TempDir()
 	srv := NewServer(dir)
 	req := httptest.NewRequest(http.MethodGet, "/replay/DOESNOTEXIST", nil)
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Fatalf("status = %d (SPA fallback should 200)", w.Code)
-	}
-	if ct := w.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
-		t.Errorf("Content-Type = %q", ct)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404 (backend serves API only)", w.Code)
 	}
 }

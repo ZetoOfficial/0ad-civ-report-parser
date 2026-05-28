@@ -8,13 +8,21 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/output"
 )
 
+const listCacheTTL = 5 * time.Second
+
 type handlers struct {
 	repRoot string
+
+	mu       sync.Mutex
+	cached   []replayListItem
+	cachedAt time.Time
 }
 
 type replayListItem struct {
@@ -28,12 +36,28 @@ type replayListItem struct {
 }
 
 func (h *handlers) listReplays(w http.ResponseWriter, r *http.Request) {
-	entries, err := os.ReadDir(h.repRoot)
+	items, err := h.buildList()
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("scan: %v", err))
 		return
 	}
-	var items []replayListItem
+	writeJSON(w, http.StatusOK, items)
+}
+
+func (h *handlers) buildList() ([]replayListItem, error) {
+	h.mu.Lock()
+	if h.cached != nil && time.Since(h.cachedAt) < listCacheTTL {
+		cached := h.cached
+		h.mu.Unlock()
+		return cached, nil
+	}
+	h.mu.Unlock()
+
+	entries, err := os.ReadDir(h.repRoot)
+	if err != nil {
+		return nil, err
+	}
+	items := []replayListItem{}
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
@@ -46,10 +70,6 @@ func (h *handlers) listReplays(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
-		outcome := "—"
-		if fs, ok := a.FinalState.Players[1]; ok {
-			outcome = fs.Outcome
-		}
 		items = append(items, replayListItem{
 			Dir:        e.Name(),
 			MatchID:    a.Game.MatchID,
@@ -57,11 +77,46 @@ func (h *handlers) listReplays(w http.ResponseWriter, r *http.Request) {
 			Timestamp:  a.Game.Timestamp,
 			DurationMs: a.Game.DurationMs,
 			Players:    a.Players,
-			Outcome:    outcome,
+			Outcome:    resolveOutcome(a),
 		})
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].Timestamp > items[j].Timestamp })
-	writeJSON(w, http.StatusOK, items)
+
+	h.mu.Lock()
+	h.cached = items
+	h.cachedAt = time.Now()
+	h.mu.Unlock()
+	return items, nil
+}
+
+// resolveOutcome picks the most informative outcome: prefer the first
+// human (non-AI) player; fall back to the lowest player ID with a recorded
+// state; fall back to "—" if nothing usable.
+func resolveOutcome(a *output.Analysis) string {
+	humanIDs := []int{}
+	for _, p := range a.Players {
+		if !p.IsAI {
+			humanIDs = append(humanIDs, p.ID)
+		}
+	}
+	sort.Ints(humanIDs)
+	for _, id := range humanIDs {
+		if fs, ok := a.FinalState.Players[id]; ok && fs.Outcome != "" {
+			return fs.Outcome
+		}
+	}
+	// fallback: any player with an outcome, lowest ID first
+	ids := make([]int, 0, len(a.FinalState.Players))
+	for id := range a.FinalState.Players {
+		ids = append(ids, id)
+	}
+	sort.Ints(ids)
+	for _, id := range ids {
+		if fs := a.FinalState.Players[id]; fs.Outcome != "" {
+			return fs.Outcome
+		}
+	}
+	return "—"
 }
 
 func (h *handlers) getReplay(w http.ResponseWriter, r *http.Request) {

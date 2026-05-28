@@ -70,24 +70,25 @@ clean:
 	rm -f *_buildings_report.md
 	rm -rf $(BIN_DIR)
 
-replayreport: web-build
+replayreport:
 	@mkdir -p $(BIN_DIR)
 	$(GO) build -o $(BIN_DIR)/replayreport ./cmd/replayreport
 
+# Kept as alias for older muscle memory.
 .PHONY: replayreport-fast
-replayreport-fast:
-	@mkdir -p $(BIN_DIR)
-	$(GO) build -o $(BIN_DIR)/replayreport ./cmd/replayreport
+replayreport-fast: replayreport
 
-.PHONY: web-install web-build web-dev
+.PHONY: web-install web-build web-preview web-dev
 web-install:
 	cd web && npm install
 
 web-build: web-install
 	cd web && npm run build
-	rm -rf internal/replay/webui/dist
-	mkdir -p internal/replay/webui/dist
-	cp -R web/dist/. internal/replay/webui/dist/
+
+# Production-style static serve of the SPA. Pair with a running replayreport
+# backend on :8080 (vite preview proxies /api to it).
+web-preview: web-build
+	cd web && npm run preview
 
 web-dev:
 	cd web && npm run dev

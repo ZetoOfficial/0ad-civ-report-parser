@@ -1,4 +1,5 @@
 import type { Player } from "../types";
+import { colorToCss, contrastText } from "../utils";
 
 interface Props {
   player: Player;
@@ -6,11 +7,12 @@ interface Props {
 }
 
 export function PlayerChip({ player, compact }: Props) {
-  const bg = `rgb(${player.color.r}, ${player.color.g}, ${player.color.b})`;
+  const bg = colorToCss(player.color);
+  const fg = contrastText(player.color);
   return (
     <span
-      className="inline-block px-2 py-0.5 rounded-full text-white text-xs font-medium"
-      style={{ backgroundColor: bg, textShadow: "0 1px 1px rgba(0,0,0,.3)" }}
+      className="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
+      style={{ backgroundColor: bg, color: fg }}
     >
       {player.name} ({player.civ})
       {player.is_ai && ` · AI d${player.ai_diff ?? "?"}`}

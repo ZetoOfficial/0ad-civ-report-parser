@@ -6,6 +6,7 @@ import { PlayerChip } from "../components/PlayerChip";
 import { BuildOrderList } from "../components/BuildOrderList";
 import { AnomalyList } from "../components/AnomalyList";
 import { DensityChart } from "../components/DensityChart";
+import { formatDuration } from "../utils";
 
 export function ReplayPage() {
   const { matchID = "" } = useParams();
@@ -13,7 +14,17 @@ export function ReplayPage() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    getReplay(matchID).then(setA).catch((e) => setErr(String(e)));
+    setA(null);
+    setErr(null);
+    const ac = new AbortController();
+    getReplay(matchID, ac.signal)
+      .then((x) => { if (!ac.signal.aborted) setA(x); })
+      .catch((e) => {
+        if (ac.signal.aborted) return;
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        setErr(String(e));
+      });
+    return () => ac.abort();
   }, [matchID]);
 
   if (err) return <p className="text-red-600">Error: {err}</p>;
@@ -25,7 +36,7 @@ export function ReplayPage() {
         <h1 className="text-2xl font-bold">{a.game.map}</h1>
         <div className="text-sm text-gray-500 flex gap-4 mt-1">
           <span>matchID: {a.game.match_id}</span>
-          <span>длительность: {Math.floor(a.game.duration_ms / 60000)} мин</span>
+          <span>длительность: {formatDuration(a.game.duration_ms)}</span>
           <span>движок: {a.game.engine_version}</span>
         </div>
       </header>
