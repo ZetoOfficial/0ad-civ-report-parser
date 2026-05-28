@@ -1,0 +1,41 @@
+package templates
+
+import "fmt"
+
+import "github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/output"
+
+templ Index(items []ReplayCard) {
+	@Layout("0ad replays") {
+		<h1>Партии</h1>
+		<ul class="cards">
+			for _, it := range items {
+				<li class="card">
+					<a href={ templ.SafeURL(fmt.Sprintf("/replay/%s", it.MatchID)) }>
+						<div class="card-title">{ it.Map }</div>
+						<div class="card-meta">{ it.When } · { it.Duration }</div>
+						<div class="card-players">
+							for _, p := range it.Players {
+								<span class="chip" style={ fmt.Sprintf("background:rgb(%d,%d,%d)", p.Color.R, p.Color.G, p.Color.B) }>
+									{ p.Name } ({ p.Civ })
+									if p.IsAI {
+										{ " · AI" }
+									}
+								</span>
+							}
+						</div>
+						<div class="card-outcome">{ it.Outcome }</div>
+					</a>
+				</li>
+			}
+		</ul>
+	}
+}
+
+type ReplayCard struct {
+	MatchID  string
+	Map      string
+	When     string
+	Duration string
+	Players  []output.Player
+	Outcome  string
+}

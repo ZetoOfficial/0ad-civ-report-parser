@@ -1,0 +1,85 @@
+package templates
+
+import "fmt"
+
+import "github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/output"
+
+templ Replay(a *output.Analysis, buildOrder []BuildOrderRow, anomalies []AnomalyRow) {
+	@Layout(fmt.Sprintf("Replay %s", a.Game.MatchID)) {
+		<h1>{ a.Game.Map }</h1>
+		<section class="header-meta">
+			<div>matchID: { a.Game.MatchID }</div>
+			<div>длительность: { fmt.Sprintf("%d мин", a.Game.DurationMs/60000) }</div>
+			<div>движок: { a.Game.EngineVersion }</div>
+		</section>
+		<section class="players">
+			for _, p := range a.Players {
+				<div class="player-row">
+					<span class="chip" style={ fmt.Sprintf("background:rgb(%d,%d,%d)", p.Color.R, p.Color.G, p.Color.B) }>
+						{ p.Name } · { p.Civ }
+						if p.IsAI {
+							{ fmt.Sprintf("· Petra (d%d)", p.AIDiff) }
+						}
+					</span>
+					if fs, ok := a.FinalState.Players[p.ID]; ok {
+						<span class="outcome">{ fs.Outcome }</span>
+						<span class="phase">фаза: { fs.Phase }</span>
+						<span class="pop">{ fmt.Sprintf("поп: %d/%d", fs.PopCount, fs.PopLimit) }</span>
+					}
+				</div>
+			}
+		</section>
+		<section class="density-placeholder">
+			<h2>Плотность действий (30-сек бины)</h2>
+			<p>График в Task 9. Пока — таблица:</p>
+			<table>
+				<tr><th>t (сек)</th><th>military</th><th>build</th><th>research</th><th>economy</th><th>other</th></tr>
+				for _, b := range a.Metrics.Density {
+					<tr>
+						<td>{ fmt.Sprint(b.TSec) }</td>
+						<td>{ fmt.Sprint(b.Counts["military"]) }</td>
+						<td>{ fmt.Sprint(b.Counts["build"]) }</td>
+						<td>{ fmt.Sprint(b.Counts["research"]) }</td>
+						<td>{ fmt.Sprint(b.Counts["economy"]) }</td>
+						<td>{ fmt.Sprint(b.Counts["other"]) }</td>
+					</tr>
+				}
+			</table>
+		</section>
+		<aside class="build-order">
+			<h2>Build order</h2>
+			<table>
+				<tr><th>t</th><th>player</th><th>event</th></tr>
+				for _, r := range buildOrder {
+					<tr><td>{ r.Time }</td><td>{ r.Player }</td><td>{ r.Event }</td></tr>
+				}
+			</table>
+		</aside>
+		<section class="anomalies">
+			<h2>Аномалии</h2>
+			if len(anomalies) == 0 {
+				<p class="empty">Чисто</p>
+			} else {
+				<ul>
+					for _, an := range anomalies {
+						<li>
+							<strong>{ an.Type }</strong>
+							{ fmt.Sprintf(" %s · t=%d..%d · %s", an.Severity, an.TStart, an.TEnd, an.Detail) }
+						</li>
+					}
+				</ul>
+			}
+		</section>
+	}
+}
+
+type BuildOrderRow struct {
+	Time   string
+	Player string
+	Event  string
+}
+
+type AnomalyRow struct {
+	Type, Severity, Detail string
+	TStart, TEnd           int
+}

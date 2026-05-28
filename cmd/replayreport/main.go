@@ -4,10 +4,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay"
+	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/webui"
 )
 
 const defaultReplayDir = "/Users/zeto/Library/Application Support/0ad/replays/0.28.0"
@@ -17,10 +19,12 @@ func main() {
 		all    bool
 		check  bool
 		repDir string
+		addr   string
 	)
 	flag.BoolVar(&all, "all", false, "process every replay subdir under replay root")
 	flag.BoolVar(&check, "check", false, "validate replays; exit with non-zero on any failure (no http)")
 	flag.StringVar(&repDir, "replays", defaultReplayDir, "replay root (used when no positional arg)")
+	flag.StringVar(&addr, "addr", ":8080", "HTTP listen address")
 	flag.Parse()
 
 	if flag.NArg() == 1 && !all {
@@ -35,7 +39,18 @@ func main() {
 	if flag.NArg() == 1 && all {
 		root = flag.Arg(0)
 	}
-	runScan(root, check)
+	if check {
+		runScan(root, true)
+		return
+	}
+
+	fmt.Printf("scanning %s …\n", root)
+	runScan(root, false)
+	fmt.Printf("serving http://localhost%s\n", addr)
+	if err := http.ListenAndServe(addr, webui.NewServer(root)); err != nil {
+		fmt.Fprintln(os.Stderr, "http:", err)
+		os.Exit(1)
+	}
 }
 
 func runOne(dir string) error {
