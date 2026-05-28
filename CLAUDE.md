@@ -126,15 +126,25 @@ internal/i18n/                     русские термины + перево�
   ├── modifier.go                  pathTranslations (~50 ключей) + DescribeModification
   └── tech_name.go                 TechDisplayName — человекочитаемые имена технологий
 internal/render/                   рендер markdown
-  ├── format.go                    форматтеры одного поля (FormatCost, FormatHP, ...)
-  ├── report.go                    Generator (+Index *tech.Index), Generate(), header/overview/phases
+  ├── format.go                    форматтеры одного поля (FormatCost, FormatHP, ...,
+  │                                FormatCaptureResistance, FormatStatusEffectResistance,
+  │                                + unexp. formatAttackBonuses/Splash/CaptureAttack/
+  │                                  PreferredClasses/ApplyStatuses)
+  ├── report.go                    Generator (+Index *tech.Index, +statusEffects map),
+  │                                Generate(), header/overview/phases,
+  │                                loadStatusEffectsCached() shared helper
   ├── overview.go                  рендер блоков для overview-вкладки
-  ├── structree.go                 рендер фаз через Reach + WallSet + Pair
+  ├── structree.go                 рендер фаз через Reach + WallSet + Pair;
+  │                                renderBuilding включает Resistance Capture/StatusEffect
   ├── pair.go                      formatTechRow/formatPairRow; chainSuffix; ◐-маркер парных техов
   ├── wallset.go                   renderWallSetBlock; 7-колоночная таблица стен; roleLabel
-  ├── common.go                    рендер common.md
+  ├── common.go                    рендер common.md (включая per-status анкеры
+  │                                ### Poisoned / ### Burning после общей таблицы)
   ├── common_data.go               данные для common.md (авто-эффекты, damage, resources)
-  ├── units.go                     приложение по юнитам, ауры героев/катафалка
+  ├── units.go                     приложение по юнитам, ауры героев/катафалка;
+  │                                renderUnitBlock пишет attack-mode блоки (Бонусы/
+  │                                Предпочитает/Брызги/Накладывает) через
+  │                                renderAttackModeRows helper
   └── summary.go                   сводная таблица в конце
 internal/testutil/
   └── gamedata.go                  helpers для тестов (skipIfNoGamedata, gamedataRoot, newResolver)
@@ -231,6 +241,17 @@ testdata/
   glob-функции удалены. Pair-техи разворачиваются в две строки (`tech.ExpandPair`).
   Граф replaces/supersedes строится через `tech.NewIndex`. WallSet группируется
   через `civdata.IdentifyWallSets`.
+- **После эпика 4a**: атака юнита в детальной таблице включает
+  `Бонусы (m)`, `Предпочитает (m)`, `Брызги (m)`, `Накладывает (m)`
+  per attack-mode (Melee/Ranged/Capture). Capture показывается как
+  третий attack-mode (`Атака (захват)`) при наличии `<Attack><Capture>`.
+  Сопротивление включает `Сопротивление захвату` и
+  `Сопротивление статус-эффектам` (если поля присутствуют — в R28
+  ещё пусто, но логика готова). `common.md` содержит per-status
+  заголовки `### Poisoned` / `### Burning`, на которые ссылаются
+  unit-строки `(см. common.md#poisoned)`. Тренировочная таблица
+  (`renderTrains`) не меняется. `formatApplyStatuses` пропускает
+  no-op `BlockChance>0, Duration<=0` defaults в base templates.
 
 ## Команды
 

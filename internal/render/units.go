@@ -8,6 +8,7 @@ import (
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/aura"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/civdata"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/i18n"
+	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/tmpl"
 )
 
 func (g *Generator) renderUnitsDetail(sb *strings.Builder, units []civdata.Entity, heroAuras, catafalqueAuras []*aura.Aura) {
@@ -100,15 +101,30 @@ func (g *Generator) renderUnitBlock(sb *strings.Builder, u civdata.Entity) {
 	fmt.Fprintf(sb, "| Время тренировки | %s |\n", FormatBuildTime(u.Element))
 	fmt.Fprintf(sb, "| ОЗ | %s |\n", FormatHP(u.Element))
 	fmt.Fprintf(sb, "| Броня (H/P/C) | %s |\n", FormatArmorHPC(u.Element))
+	if r := FormatCaptureResistance(u.Element); r != "" {
+		fmt.Fprintf(sb, "| Сопротивление захвату | %s |\n", r)
+	}
+	if r := FormatStatusEffectResistance(u.Element); r != "" {
+		fmt.Fprintf(sb, "| Сопротивление статус-эффектам | %s |\n", r)
+	}
 	fmt.Fprintf(sb, "| Скорость | %s |\n", FormatWalkSpeed(u.Element))
 	fmt.Fprintf(sb, "| Обзор | %s |\n", FormatVision(u.Element))
 	fmt.Fprintf(sb, "| Население | %s |\n", FormatPopulation(u.Element))
 
+	// Melee attack block
 	if a := FormatMeleeAttack(u.Element); a != "" {
 		fmt.Fprintf(sb, "| Атака (ближ.) | %s |\n", a)
+		g.renderAttackModeRows(sb, "ближ.", u.Element.Get("Attack/Melee"))
 	}
+	// Ranged attack block
 	if a := FormatRangedAttack(u.Element); a != "" {
 		fmt.Fprintf(sb, "| Атака (стрельба) | %s |\n", a)
+		g.renderAttackModeRows(sb, "стрельба", u.Element.Get("Attack/Ranged"))
+	}
+	// Capture attack block
+	if a := formatCaptureAttack(u.Element.Get("Attack")); a != "" {
+		fmt.Fprintf(sb, "| Атака (захват) | %s |\n", a)
+		g.renderAttackModeRows(sb, "захват", u.Element.Get("Attack/Capture"))
 	}
 
 	prom := u.Element.Get("Promotion")
@@ -130,6 +146,26 @@ func (g *Generator) renderUnitBlock(sb *strings.Builder, u civdata.Entity) {
 	}
 
 	fmt.Fprintln(sb)
+}
+
+// renderAttackModeRows writes the optional bonus/preferred/splash/apply-status rows
+// that follow an "Атака (<modeLabel>)" row. modeEl is the Attack/<Mode> element.
+func (g *Generator) renderAttackModeRows(sb *strings.Builder, modeLabel string, modeEl *tmpl.Element) {
+	if modeEl == nil {
+		return
+	}
+	if b := formatAttackBonuses(modeEl); b != "" {
+		fmt.Fprintf(sb, "| Бонусы (%s) | %s |\n", modeLabel, b)
+	}
+	if p := formatPreferredClasses(modeEl); p != "" {
+		fmt.Fprintf(sb, "| Предпочитает (%s) | %s |\n", modeLabel, p)
+	}
+	if s := formatSplash(modeEl); s != "" {
+		fmt.Fprintf(sb, "| Брызги (%s) | %s |\n", modeLabel, s)
+	}
+	for _, line := range formatApplyStatuses(modeEl, g.statusEffects) {
+		fmt.Fprintf(sb, "| Накладывает (%s) | %s |\n", modeLabel, line)
+	}
 }
 
 func (g *Generator) renderHeroAuras(sb *strings.Builder, u civdata.Entity, heroAuras []*aura.Aura) {

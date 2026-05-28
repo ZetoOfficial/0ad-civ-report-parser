@@ -88,4 +88,14 @@ func TestCommon_StatusEffects(t *testing.T) {
 	if !strings.Contains(body, "Burning") || !strings.Contains(body, "Poisoned") {
 		t.Errorf("missing burning/poisoned in status effects")
 	}
+	// Per-status sub-block headings.
+	mustHaveAll(t, body, []string{
+		"### Poisoned",
+		"### Burning",
+	})
+	// Quoted applier/receiver tooltips from actual poisoned.json.
+	mustHaveAll(t, body, []string{
+		"> **Применяющему:** This unit causes poison damage.",
+		"> **Пострадавшему:** This unit is poisoned.",
+	})
 }

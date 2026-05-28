@@ -179,7 +179,7 @@ func (g *Generator) commonResources(sb *strings.Builder) error {
 }
 
 func (g *Generator) commonStatusEffects(sb *strings.Builder) error {
-	es, err := loadStatusEffects(g.Layout.StatusEffects())
+	es, err := g.loadStatusEffectsCached()
 	if err != nil {
 		return err
 	}
@@ -193,5 +193,20 @@ func (g *Generator) commonStatusEffects(sb *strings.Builder) error {
 			escapeTable(e.ApplierTooltip), escapeTable(e.ReceiverTooltip))
 	}
 	fmt.Fprintln(sb)
+	// Per-status sub-blocks with anchors for cross-file links.
+	// GitHub auto-lowercases heading anchors: ### Poisoned → #poisoned.
+	// formatApplyStatuses links via common.md#<lower(Code)>; in R28 every
+	// StatusName == Code, so the anchor resolves. If a future status uses
+	// a localized StatusName, this cross-link will need a different scheme.
+	for _, e := range es {
+		fmt.Fprintf(sb, "### %s\n\n", e.StatusName)
+		if e.ApplierTooltip != "" {
+			fmt.Fprintf(sb, "> **Применяющему:** %s\n", e.ApplierTooltip)
+		}
+		if e.ReceiverTooltip != "" {
+			fmt.Fprintf(sb, "> **Пострадавшему:** %s\n", e.ReceiverTooltip)
+		}
+		fmt.Fprintln(sb)
+	}
 	return nil
 }

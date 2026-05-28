@@ -261,7 +261,7 @@ generic-варианта.
 
 ---
 
-### 10. Бонусы атаки (`Bonuses` в `<Attack>`) не рендерятся
+### 10. Бонусы атаки (`Bonuses` в `<Attack>`) не рендерятся  *(закрыто в эпике 4a, см. внизу)*
 
 **Что есть сейчас:** `FormatMeleeAttack`/`FormatRangedAttack` собирают
 только урон, range и repeat time.
@@ -280,7 +280,7 @@ generic-варианта.
 
 ---
 
-### 11. Splash damage, capture details, status effects в атаке
+### 11. Splash damage, capture details, status effects в атаке  *(закрыто в эпике 4a, см. внизу)*
 
 **Что есть сейчас:** не рендерятся.
 
@@ -467,7 +467,7 @@ RepeatTime). В игре — `getHealerTooltip`.
 
 ---
 
-### 17. Resistance: Capture и StatusEffect не рендерятся
+### 17. Resistance: Capture и StatusEffect не рендерятся  *(закрыто в эпике 4a, см. внизу)*
 
 **Что есть сейчас:** `FormatArmor`/`FormatArmorHPC` берут только
 `Resistance/Entity/Damage/{Hack,Pierce,Crush}`.
@@ -627,6 +627,9 @@ Player-шаблон в `Generator.Generate` и прочитать три пол�
 | 8 | Civ-варианты фаз | 3 | `Index.ResolveForCiv` + `Supersedes`-fallback в `requirementPhase` |
 | 9 | Транзитивное замыкание | 3 | `civdata.Reach(civ, idx, resolver, catalog)`; `Buildings()`/`Units()` удалены |
 | 13 | Группировка WallSet | 3 | `civdata.IdentifyWallSets`; render `### Стены` блоком |
+| 10 | Бонусы атаки `<Bonuses>` | 4a | `formatAttackBonuses`; строки `Бонусы (m)` per attack-mode; `formatPreferredClasses` для `<PreferredClasses>` |
+| 11 | Splash / Capture-as-mode / ApplyStatus | 4a | `formatSplash`, `formatCaptureAttack`, `formatApplyStatuses`; per-status anchors `### <code>` в `common.md` |
+| 17 | Resistance Capture / StatusEffect | 4a | `FormatCaptureResistance`, `FormatStatusEffectResistance` (R28-данные пусты — функции готовы к появлению полей в шаблонах) |
 
 ## Принятые решения
 
