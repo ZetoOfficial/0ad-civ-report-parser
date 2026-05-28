@@ -32,17 +32,17 @@ type PlayerState struct {
 // integer (0–255) depending on the replay version.
 func (ps *PlayerState) UnmarshalJSON(data []byte) error {
 	type raw struct {
-		Name            string          `json:"name"`
-		Civ             string          `json:"civ"`
-		State           string          `json:"state"`
-		Phase           string          `json:"phase"`
-		PopCount        int             `json:"popCount"`
-		PopLimit        int             `json:"popLimit"`
-		PopMax          int             `json:"popMax"`
-		Team            int             `json:"team"`
-		Color           Color           `json:"color"`
-		ResourceCounts  map[string]int  `json:"resourceCounts"`
-		ResearchedTechs json.RawMessage `json:"researchedTechs"`
+		Name            string             `json:"name"`
+		Civ             string             `json:"civ"`
+		State           string             `json:"state"`
+		Phase           string             `json:"phase"`
+		PopCount        int                `json:"popCount"`
+		PopLimit        int                `json:"popLimit"`
+		PopMax          int                `json:"popMax"`
+		Team            int                `json:"team"`
+		Color           Color              `json:"color"`
+		ResourceCounts  map[string]float64 `json:"resourceCounts"`
+		ResearchedTechs json.RawMessage    `json:"researchedTechs"`
 	}
 	var r raw
 	if err := json.Unmarshal(data, &r); err != nil {
@@ -57,7 +57,14 @@ func (ps *PlayerState) UnmarshalJSON(data []byte) error {
 	ps.PopMax = r.PopMax
 	ps.Team = r.Team
 	ps.Color = r.Color
-	ps.ResourceCounts = r.ResourceCounts
+	// resourceCounts can be fractional (0ad accumulates resources as float).
+	// Truncate to int for storage.
+	if r.ResourceCounts != nil {
+		ps.ResourceCounts = make(map[string]int, len(r.ResourceCounts))
+		for k, v := range r.ResourceCounts {
+			ps.ResourceCounts[k] = int(v)
+		}
+	}
 
 	// researchedTechs can be a JSON array or a JSON object.
 	if len(r.ResearchedTechs) > 0 && r.ResearchedTechs[0] == '[' {

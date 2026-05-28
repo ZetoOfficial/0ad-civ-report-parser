@@ -10,7 +10,7 @@ GAMEDATA_FLAG := $(if $(GAMEDATA),--gamedata $(GAMEDATA),)
 OUT_DIR_FLAG  := $(if $(OUT_DIR),--out-dir $(OUT_DIR),)
 CONFIG_FLAG   := $(if $(CONFIG),--config $(CONFIG),)
 
-.PHONY: help build all-civs check test clean civ golden-diff $(CIVS)
+.PHONY: help build all-civs check test clean civ golden-diff $(CIVS) replayreport replay-check
 
 .DEFAULT_GOAL := help
 
@@ -69,3 +69,10 @@ clean:
 	rm -f *_overview.md *_structree.md common.md
 	rm -f *_buildings_report.md
 	rm -rf $(BIN_DIR)
+
+replayreport:
+	@mkdir -p $(BIN_DIR)
+	$(GO) build -o $(BIN_DIR)/replayreport ./cmd/replayreport
+
+replay-check: replayreport
+	./$(BIN_DIR)/replayreport --check --all
