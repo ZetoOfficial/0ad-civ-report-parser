@@ -64,10 +64,7 @@ func Run(replayDir string) (*output.Analysis, error) {
 	if err != nil {
 		return nil, err
 	}
-	game.DurationMs = durationMs
-	if meta.TimeElapsed > durationMs {
-		game.DurationMs = meta.TimeElapsed
-	}
+	game.DurationMs = max(durationMs, meta.TimeElapsed)
 
 	a := buildAnalysis(game, players, meta, evs)
 
