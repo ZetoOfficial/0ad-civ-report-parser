@@ -18,6 +18,7 @@ type handlers struct {
 }
 
 type replayListItem struct {
+	Dir        string          `json:"dir"`
 	MatchID    string          `json:"match_id"`
 	Map        string          `json:"map"`
 	Timestamp  int64           `json:"timestamp"`
@@ -50,6 +51,7 @@ func (h *handlers) listReplays(w http.ResponseWriter, r *http.Request) {
 			outcome = fs.Outcome
 		}
 		items = append(items, replayListItem{
+			Dir:        e.Name(),
 			MatchID:    a.Game.MatchID,
 			Map:        a.Game.Map,
 			Timestamp:  a.Game.Timestamp,

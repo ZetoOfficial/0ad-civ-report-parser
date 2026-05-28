@@ -1,5 +1,12 @@
-import Plot from "react-plotly.js";
+import createPlotlyComponent from "react-plotly.js/factory";
+// @ts-expect-error — plotly.js-dist-min ships no types; using @types/plotly.js indirectly
+import Plotly from "plotly.js-dist-min";
 import type { Analysis } from "../types";
+
+// Factory pattern bypasses Vite's ESM interop issue where the default export
+// of "react-plotly.js" comes through as `{default: Component}` instead of the
+// Component itself.
+const Plot = createPlotlyComponent(Plotly);
 
 interface Props { analysis: Analysis }
 

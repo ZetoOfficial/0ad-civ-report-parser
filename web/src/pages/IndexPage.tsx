@@ -34,7 +34,7 @@ export function IndexPage() {
       <h1 className="text-2xl font-bold mb-4">Партии ({items.length})</h1>
       <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {items.map((it) => (
-          <li key={it.match_id} className="bg-white rounded-lg border border-gray-200 hover:border-gray-400 transition">
+          <li key={it.dir} className="bg-white rounded-lg border border-gray-200 hover:border-gray-400 transition">
             <Link to={`/replay/${it.match_id}`} className="block p-4">
               <div className="font-semibold">{it.map || "—"}</div>
               <div className="text-xs text-gray-500 mt-1">

@@ -96,6 +96,7 @@ export interface Analysis {
 }
 
 export interface ReplayListItem {
+  dir: string;
   match_id: string;
   map: string;
   timestamp: number;
