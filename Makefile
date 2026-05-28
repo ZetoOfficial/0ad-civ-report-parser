@@ -92,5 +92,12 @@ web-build: web-install
 web-dev:
 	cd web && npm run dev
 
+.PHONY: back-run front-run
+back-run: replayreport-fast
+	./$(BIN_DIR)/replayreport
+
+front-run:
+	cd web && npm run dev
+
 replay-check: replayreport
 	./$(BIN_DIR)/replayreport --check --all

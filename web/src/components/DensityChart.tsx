@@ -1,11 +1,18 @@
-import createPlotlyComponent from "react-plotly.js/factory";
-// @ts-expect-error — plotly.js-dist-min ships no types; using @types/plotly.js indirectly
-import Plotly from "plotly.js-dist-min";
+import * as factoryMod from "react-plotly.js/factory";
+// @ts-expect-error — plotly.js-dist-min ships no types
+import * as PlotlyMod from "plotly.js-dist-min";
 import type { Analysis } from "../types";
 
-// Factory pattern bypasses Vite's ESM interop issue where the default export
-// of "react-plotly.js" comes through as `{default: Component}` instead of the
-// Component itself.
+// Vite's CJS-ESM interop wraps these inconsistently. Both `react-plotly.js/factory`
+// and `plotly.js-dist-min` are CJS — Vite sometimes exposes them as the function/
+// object directly, sometimes as `{default: ...}`. Unwrap defensively at runtime.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const createPlotlyComponent: any =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (factoryMod as any).default ?? factoryMod;
+const Plotly =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (PlotlyMod as any).default ?? PlotlyMod;
 const Plot = createPlotlyComponent(Plotly);
 
 interface Props { analysis: Analysis }
