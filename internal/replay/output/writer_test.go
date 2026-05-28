@@ -38,22 +38,35 @@ func TestWriteRoundtrip(t *testing.T) {
 	if len(got.Players) != 1 || got.Players[0].Civ != "spart" {
 		t.Errorf("Players = %+v", got.Players)
 	}
+	if len(got.Events) != 1 || got.Events[0].Type != "train" || got.Events[0].Player != 1 || got.Events[0].T != 1200 {
+		t.Errorf("Events = %+v", got.Events)
+	}
 }
 
 func TestIsFresh(t *testing.T) {
 	dir := t.TempDir()
 	src := filepath.Join(dir, "commands.txt")
 	out := filepath.Join(dir, "analysis.json")
-	os.WriteFile(src, []byte("x"), 0o644)
+	if err := os.WriteFile(src, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if IsFresh(out, src) {
 		t.Fatal("missing analysis must be stale")
 	}
-	os.WriteFile(out, []byte("{}"), 0o644)
+	if err := os.WriteFile(out, []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	// out written after src (Go writes are monotonic in practice; but force via Chtimes)
 	now := time.Now()
 	os.Chtimes(src, now.Add(-time.Minute), now.Add(-time.Minute))
 	os.Chtimes(out, now, now)
 	if !IsFresh(out, src) {
 		t.Fatal("analysis newer than commands must be fresh")
+	}
+	// Output exists but is OLDER than source → stale
+	os.Chtimes(src, now, now)
+	os.Chtimes(out, now.Add(-time.Minute), now.Add(-time.Minute))
+	if IsFresh(out, src) {
+		t.Fatal("output older than commands must be stale")
 	}
 }

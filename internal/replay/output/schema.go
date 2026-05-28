@@ -32,7 +32,11 @@ type Player struct {
 	Color  Color  `json:"color"`
 }
 
-type Color struct{ R, G, B int }
+type Color struct {
+	R int `json:"r"`
+	G int `json:"g"`
+	B int `json:"b"`
+}
 
 type Event struct {
 	T      int64  `json:"t"`               // ms from game start
@@ -59,7 +63,10 @@ type PlayerFinalState struct {
 }
 
 type Resources struct {
-	Food, Wood, Stone, Metal int
+	Food  int `json:"food"`
+	Wood  int `json:"wood"`
+	Stone int `json:"stone"`
+	Metal int `json:"metal"`
 }
 
 type Metrics struct {

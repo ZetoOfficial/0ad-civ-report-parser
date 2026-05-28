@@ -25,7 +25,10 @@ func Write(path string, a *Analysis) error {
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("output: close: %w", err)
 	}
-	return os.Rename(tmp.Name(), path)
+	if err := os.Rename(tmp.Name(), path); err != nil {
+		return fmt.Errorf("output: rename: %w", err)
+	}
+	return nil
 }
 
 // IsFresh reports whether path exists and is newer than the source (commandsTxt).
