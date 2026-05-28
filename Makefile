@@ -10,7 +10,7 @@ GAMEDATA_FLAG := $(if $(GAMEDATA),--gamedata $(GAMEDATA),)
 OUT_DIR_FLAG  := $(if $(OUT_DIR),--out-dir $(OUT_DIR),)
 CONFIG_FLAG   := $(if $(CONFIG),--config $(CONFIG),)
 
-.PHONY: help build all-civs check test clean civ golden-diff $(CIVS) replayreport replay-check
+.PHONY: help build all-civs check test clean civ golden-diff $(CIVS) replayreport replayreport-fast web-install web-build web-dev replay-check
 
 .DEFAULT_GOAL := help
 
@@ -70,9 +70,27 @@ clean:
 	rm -f *_buildings_report.md
 	rm -rf $(BIN_DIR)
 
-replayreport:
+replayreport: web-build
 	@mkdir -p $(BIN_DIR)
 	$(GO) build -o $(BIN_DIR)/replayreport ./cmd/replayreport
+
+.PHONY: replayreport-fast
+replayreport-fast:
+	@mkdir -p $(BIN_DIR)
+	$(GO) build -o $(BIN_DIR)/replayreport ./cmd/replayreport
+
+.PHONY: web-install web-build web-dev
+web-install:
+	cd web && npm install
+
+web-build: web-install
+	cd web && npm run build
+	rm -rf internal/replay/webui/dist
+	mkdir -p internal/replay/webui/dist
+	cp -R web/dist/. internal/replay/webui/dist/
+
+web-dev:
+	cd web && npm run dev
 
 replay-check: replayreport
 	./$(BIN_DIR)/replayreport --check --all

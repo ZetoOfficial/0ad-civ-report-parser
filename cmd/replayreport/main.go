@@ -47,6 +47,7 @@ func main() {
 	fmt.Printf("scanning %s …\n", root)
 	runScan(root, false)
 	fmt.Printf("serving http://localhost%s\n", addr)
+	fmt.Println("  (dev: run `make web-dev` for hot-reload at :5173 → :8080)")
 	if err := http.ListenAndServe(addr, webui.NewServer(root)); err != nil {
 		fmt.Fprintln(os.Stderr, "http:", err)
 		os.Exit(1)

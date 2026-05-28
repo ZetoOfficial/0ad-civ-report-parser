@@ -310,8 +310,8 @@ make clean                          # удаляет *_overview.md, *_structree.
 ## Replay analyzer (`cmd/replayreport`, `internal/replay/`)
 
 Vertical MVP. CLI `replayreport` парсит `commands.txt` + `metadata.json`
-из replay-dir, пишет `analysis.json` (schema v1) рядом, поднимает дашик
-на :8080 (templ + htmx + Plotly-JS).
+из replay-dir, пишет `analysis.json` (schema v1) рядом, поднимает REST API +
+React SPA на :8080.
 
 **Архитектура:** stages — pure functions, единственный канал между ними —
 `output.Event`. Output JSON со стабильной schema (`schema_version: 1`).
@@ -325,8 +325,16 @@ Reuse существующих `internal/{tmpl,civdata,tech,aura,i18n}` **не �
 - `internal/replay/analytics/` — phase timings, engagements, panic_garrison, action density
 - `internal/replay/output/` — schema + atomic JSON writer
 - `internal/replay/pipeline.go` — `Run(replayDir)` оркестратор + mtime-кеш
-- `internal/replay/webui/` — HTTP сервер (templ + htmx + embedded Plotly)
+- `internal/replay/webui/` — REST API (`/api/replays`, `/api/replays/{id}`) + SPA fallback (embedded React build)
 - `cmd/replayreport/main.go` — CLI
+- `web/` — React 18 + TypeScript + Vite + Tailwind + react-plotly.js + react-router. Build → `web/dist/` → copied to `internal/replay/webui/dist/` for embed.
+
+**UI стек:** React + Vite + Tailwind + Plotly через react-plotly.js. Dev: vite на :5173 проксирует `/api` на Go :8080. Prod: Go embed-ит `web/dist/` и отдаёт SPA на любой не-`/api/*` роут. `make replayreport` собирает web → копирует в `internal/replay/webui/dist/` → собирает Go-бинарь. `make replayreport-fast` пропускает web-сборку.
+
+**REST contract:**
+- `GET /api/replays` → `[]{match_id, map, timestamp, duration_ms, players, outcome}`
+- `GET /api/replays/{matchID}` → full `output.Analysis` (schema v1)
+- 404 → `{"error": "not found"}`
 
 **⚠ Time-series графики не реализованы в v1.** `metadata.json` реальных
 пользовательских реплеев не содержит `sequences` (массивы по времени) —

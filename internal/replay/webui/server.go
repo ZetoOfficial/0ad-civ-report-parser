@@ -1,20 +1,54 @@
 package webui
 
 import (
+	"embed"
+	"io/fs"
 	"net/http"
+	"strings"
 )
+
+//go:embed all:dist
+var spaFS embed.FS
 
 func NewServer(repRoot string) http.Handler {
 	h := &handlers{repRoot: repRoot}
 	mux := http.NewServeMux()
+
+	mux.HandleFunc("/api/replays", h.listReplays)
+	mux.HandleFunc("/api/replays/", h.getReplay)
+
+	dist, err := fs.Sub(spaFS, "dist")
+	if err != nil {
+		panic("webui: embed dist subtree: " + err.Error())
+	}
+	staticFS := http.FileServer(http.FS(dist))
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/" {
-			h.index(w, r)
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			http.NotFound(w, r)
 			return
 		}
-		http.NotFound(w, r)
+		if r.URL.Path == "/" {
+			serveIndex(w, dist)
+			return
+		}
+		clean := strings.TrimPrefix(r.URL.Path, "/")
+		if _, err := fs.Stat(dist, clean); err == nil {
+			staticFS.ServeHTTP(w, r)
+			return
+		}
+		serveIndex(w, dist)
 	})
-	mux.HandleFunc("/replay/", h.replay)
-	mux.Handle("/static/", http.FileServer(http.FS(staticFS)))
+
 	return mux
+}
+
+func serveIndex(w http.ResponseWriter, dist fs.FS) {
+	raw, err := fs.ReadFile(dist, "index.html")
+	if err != nil {
+		http.Error(w, "frontend not built — run `make web-build`", http.StatusServiceUnavailable)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(raw)
 }

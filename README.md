@@ -107,19 +107,38 @@ maur, pers, ptol, rome, sele, spart.
 
 ## replayreport
 
-`replayreport` парсит реплеи 0 A.D. (commands.txt + metadata.json), пишет
-`analysis.json` рядом с replay-dir, и поднимает локальный дашик с графиком
-плотности команд, фазовыми маркерами, build-order и аномалиями.
+Бэк на Go + фронт на React (отдельная папка `web/`). Бинарь `replayreport`
+парсит реплеи, держит REST API на :8080, и отдаёт собранный React-бандл из
+embedded `dist/` на остальные роуты.
+
+### Запуск
 
 ```bash
-make replayreport                            # → bin/replayreport
-./bin/replayreport                           # сканит ~/Library/Application Support/0ad/replays/0.28.0/
-                                             # → http://localhost:8080
-./bin/replayreport <replay-dir>              # парсит один replay (без HTTP)
-./bin/replayreport --check --all             # CI-режим: exit 2 если хоть один реплей упал
-./bin/replayreport --replays /path/to/dir    # альтернативный корень
-./bin/replayreport --addr :9000              # альтернативный порт
+make replayreport                # build web/ + go → bin/replayreport
+./bin/replayreport               # → http://localhost:8080
+./bin/replayreport <replay-dir>  # парсит один replay (без HTTP)
+./bin/replayreport --check --all # CI: exit 2 если что-то упало
 ```
+
+### Разработка (hot-reload)
+
+```bash
+# Терминал 1: бэк
+./bin/replayreport                # порт 8080
+
+# Терминал 2: фронт с HMR
+make web-dev                      # vite на 5173, проксирует /api/* на :8080
+```
+
+Открой `http://localhost:5173/` — изменения в `web/src/` подхватываются мгновенно.
+Изменения в Go перебилди вручную (`make replayreport-fast` если фронт не менялся).
+
+### Структура
+
+- **Backend**: `cmd/replayreport/`, `internal/replay/` — парсер + REST API + SPA-fallback
+- **Frontend**: `web/` — React 18 + TypeScript + Vite + Tailwind + react-plotly.js + react-router
+- **API contract**: `GET /api/replays` (list), `GET /api/replays/{matchID}` (full Analysis)
+- **Embed**: prod-сборка кладёт `web/dist/` в `internal/replay/webui/dist/` и embed-ит через `//go:embed`
 
 Для каждого replay-dir пишется `analysis.json` (schema v1) рядом с
 `commands.txt`. Кэш по mtime: если `analysis.json` свежее `commands.txt` —
@@ -127,13 +146,6 @@ make replayreport                            # → bin/replayreport
 
 Replay-dir без `metadata.json` пропускаются (игра упала / не дошла до
 summary screen). В v1 это ожидаемое поведение.
-
-### Что в дашике
-
-- **Список партий** — карточки с датой, картой, длительностью, цивами и исходом.
-- **Страница партии** — header + игроки с финальным состоянием + Plotly-график
-  плотности команд (30-сек бины × 5 категорий) с маркерами фаз (пунктир)
-  и крупных боёв (сплошные красные линии) + build-order + аномалии.
 
 ### Что НЕ в v1
 
