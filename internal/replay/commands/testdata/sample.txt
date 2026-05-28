@@ -1,0 +1,10 @@
+start {"settings":{"PlayerData":[{"Civ":"spart","Name":"zeto"}]},"matchID":"ABC","timestamp":1779953790,"mods":[{"mod":"public","name":"0ad","version":"0.28.0"}]}
+turn 0 200
+hash deadbeef0000000000000000000000000000000000000000000000000000beef
+hash-quick cafebabe00000000000000000000000000000000000000000000000000000000
+turn 1 200
+cmd 2 {"type":"research","entity":2481,"template":"gather_wicker_baskets","pushFront":false}
+cmd 2 {"type":"train","entities":[2481],"template":"units/spart/infantry_spearman_b","count":5,"pushFront":false}
+turn 2 200
+cmd 2 {"type":"resign"}
+end
