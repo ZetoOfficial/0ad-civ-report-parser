@@ -1,87 +1,75 @@
-import * as factoryMod from "react-plotly.js/factory";
+import { useEffect, useRef } from "react";
 // @ts-expect-error — plotly.js-dist-min ships no types
 import * as PlotlyMod from "plotly.js-dist-min";
 import type { Analysis } from "../types";
 
-// Vite's CJS-ESM interop wraps these inconsistently. Both `react-plotly.js/factory`
-// and `plotly.js-dist-min` are CJS — Vite sometimes exposes them as the function/
-// object directly, sometimes as `{default: ...}`. Unwrap defensively at runtime.
+// Vite wraps the CJS plotly bundle inconsistently — sometimes the namespace
+// itself is the Plotly object, sometimes it's `{default: Plotly}`. Unwrap.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const createPlotlyComponent: any =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (factoryMod as any).default ?? factoryMod;
-const Plotly =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (PlotlyMod as any).default ?? PlotlyMod;
-const Plot = createPlotlyComponent(Plotly);
+const Plotly: any = (PlotlyMod as any).default ?? PlotlyMod;
 
 interface Props { analysis: Analysis }
 
 const CATEGORIES = ["military", "build", "research", "economy", "other"] as const;
 
 export function DensityChart({ analysis }: Props) {
+  const ref = useRef<HTMLDivElement | null>(null);
   const bins = analysis.metrics.action_density;
-  if (!bins || bins.length === 0) {
+  const hasBins = bins && bins.length > 0;
+
+  useEffect(() => {
+    if (!ref.current || !hasBins) return;
+    const node = ref.current;
+
+    const x = bins.map((b) => b.t_sec);
+    const traces = CATEGORIES.map((cat) => ({
+      name: cat,
+      type: "bar" as const,
+      x,
+      y: bins.map((b) => b.counts[cat] ?? 0),
+    }));
+
+    const shapes: Record<string, unknown>[] = [];
+    const annotations: Record<string, unknown>[] = [];
+    for (const m of Object.values(analysis.metrics.players)) {
+      for (const [name, t] of Object.entries(m.phase_timings)) {
+        shapes.push({
+          type: "line", xref: "x", yref: "paper",
+          x0: t, x1: t, y0: 0, y1: 1,
+          line: { dash: "dash", width: 1, color: "#555" },
+        });
+        annotations.push({
+          x: t, y: 1, yref: "paper",
+          text: name, showarrow: false,
+          font: { size: 10, color: "#555" },
+        });
+      }
+      for (const e of m.engagements) {
+        if (e.peak_units < 5) continue;
+        shapes.push({
+          type: "line", xref: "x", yref: "paper",
+          x0: e.t_start_sec, x1: e.t_start_sec, y0: 0, y1: 1,
+          line: { dash: "solid", width: Math.min(1 + Math.log2(e.peak_units), 4), color: "rgba(220,0,0,0.5)" },
+        });
+      }
+    }
+
+    Plotly.newPlot(node, traces, {
+      barmode: "stack",
+      margin: { t: 24, r: 16, l: 40, b: 32 },
+      xaxis: { title: { text: "сек" } },
+      yaxis: { title: { text: "команд / 30 сек" } },
+      shapes,
+      annotations,
+      legend: { orientation: "h", y: -0.2 },
+      autosize: true,
+    }, { responsive: true, displayModeBar: false });
+
+    return () => { Plotly.purge(node); };
+  }, [analysis, bins, hasBins]);
+
+  if (!hasBins) {
     return <p className="text-gray-500 italic">no command bins</p>;
   }
-
-  const x = bins.map((b) => b.t_sec);
-  const traces = CATEGORIES.map((cat) => ({
-    name: cat,
-    type: "bar" as const,
-    x,
-    y: bins.map((b) => b.counts[cat] ?? 0),
-  }));
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const phaseShapes: any[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const phaseAnnotations: any[] = [];
-  for (const m of Object.values(analysis.metrics.players)) {
-    for (const [name, t] of Object.entries(m.phase_timings)) {
-      phaseShapes.push({
-        type: "line", xref: "x", yref: "paper",
-        x0: t, x1: t, y0: 0, y1: 1,
-        line: { dash: "dash", width: 1, color: "#555" },
-      });
-      phaseAnnotations.push({
-        x: t, y: 1, yref: "paper",
-        text: name, showarrow: false,
-        font: { size: 10, color: "#555" },
-      });
-    }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const engShapes: any[] = [];
-  for (const m of Object.values(analysis.metrics.players)) {
-    for (const e of m.engagements) {
-      if (e.peak_units < 5) continue;
-      engShapes.push({
-        type: "line", xref: "x", yref: "paper",
-        x0: e.t_start_sec, x1: e.t_start_sec, y0: 0, y1: 1,
-        line: { dash: "solid", width: Math.min(1 + Math.log2(e.peak_units), 4), color: "rgba(220,0,0,0.5)" },
-      });
-    }
-  }
-
-  return (
-    <Plot
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data={traces as any}
-      layout={{
-        barmode: "stack",
-        margin: { t: 24, r: 16, l: 40, b: 32 },
-        xaxis: { title: { text: "сек" } },
-        yaxis: { title: { text: "команд / 30 сек" } },
-        shapes: [...phaseShapes, ...engShapes],
-        annotations: phaseAnnotations,
-        legend: { orientation: "h", y: -0.2 },
-        autosize: true,
-      }}
-      style={{ width: "100%", height: 360 }}
-      useResizeHandler
-      config={{ displayModeBar: false }}
-    />
-  );
+  return <div ref={ref} style={{ width: "100%", height: 360 }} />;
 }
