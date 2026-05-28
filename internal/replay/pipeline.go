@@ -249,10 +249,22 @@ func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metad
 		allPlayers[p] = struct{}{}
 	}
 	for p := range allPlayers {
+		pt := phaseT[p]
+		if pt == nil {
+			pt = map[string]int{}
+		}
+		es := eng[p]
+		if es == nil {
+			es = []output.Engagement{}
+		}
+		an := pg[p]
+		if an == nil {
+			an = []output.Anomaly{}
+		}
 		metricsByPlayer[p] = output.PlayerMetrics{
-			PhaseTimings: phaseT[p],
-			Engagements:  eng[p],
-			Anomalies:    pg[p],
+			PhaseTimings: pt,
+			Engagements:  es,
+			Anomalies:    an,
 		}
 	}
 

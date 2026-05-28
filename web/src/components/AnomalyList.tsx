@@ -5,7 +5,7 @@ interface Props { analysis: Analysis }
 export function AnomalyList({ analysis }: Props) {
   const rows: { type: string; severity: string; t: string; detail: string }[] = [];
   for (const m of Object.values(analysis.metrics.players)) {
-    for (const an of m.anomalies) {
+    for (const an of m.anomalies ?? []) {
       let detail = "";
       const d = an.details as Record<string, unknown> | undefined;
       if (d?.target !== undefined) detail = `target=${d.target}`;

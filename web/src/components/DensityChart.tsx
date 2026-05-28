@@ -32,7 +32,7 @@ export function DensityChart({ analysis }: Props) {
     const shapes: Record<string, unknown>[] = [];
     const annotations: Record<string, unknown>[] = [];
     for (const m of Object.values(analysis.metrics.players)) {
-      for (const [name, t] of Object.entries(m.phase_timings)) {
+      for (const [name, t] of Object.entries(m.phase_timings ?? {})) {
         shapes.push({
           type: "line", xref: "x", yref: "paper",
           x0: t, x1: t, y0: 0, y1: 1,
@@ -44,7 +44,7 @@ export function DensityChart({ analysis }: Props) {
           font: { size: 10, color: "#555" },
         });
       }
-      for (const e of m.engagements) {
+      for (const e of m.engagements ?? []) {
         if (e.peak_units < 5) continue;
         shapes.push({
           type: "line", xref: "x", yref: "paper",
