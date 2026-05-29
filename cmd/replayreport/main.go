@@ -8,7 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/paths"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay"
+	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/techlib"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/webui"
 )
 
@@ -16,19 +18,35 @@ const defaultReplayDir = "/Users/zeto/Library/Application Support/0ad/replays/0.
 
 func main() {
 	var (
-		all    bool
-		check  bool
-		repDir string
-		addr   string
+		all      bool
+		check    bool
+		repDir   string
+		addr     string
+		gamedata string
 	)
 	flag.BoolVar(&all, "all", false, "process every replay subdir under replay root")
 	flag.BoolVar(&check, "check", false, "validate replays; exit with non-zero on any failure (no http)")
 	flag.StringVar(&repDir, "replays", defaultReplayDir, "replay root (used when no positional arg)")
 	flag.StringVar(&addr, "addr", ":8080", "HTTP listen address")
+
+	// Resolution order: CLI flag > env var > compiled default.
+	gamedataDefault := paths.DefaultGameDataRoot
+	if env := os.Getenv(paths.EnvGameDataRoot); env != "" {
+		gamedataDefault = env
+	}
+	flag.StringVar(&gamedata, "gamedata", gamedataDefault, "path to 0ad mods/public data root")
 	flag.Parse()
 
+	// Load tech library. A missing/unreadable gamedata root is non-fatal; the
+	// pipeline falls back to recording only the raw template name.
+	lib, err := techlib.Load(gamedata)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "techlib: %v; continuing without tech metadata\n", err)
+		lib = nil
+	}
+
 	if flag.NArg() == 1 && !all {
-		if err := runOne(flag.Arg(0)); err != nil {
+		if err := runOne(flag.Arg(0), lib); err != nil {
 			fmt.Fprintln(os.Stderr, "ERROR:", err)
 			os.Exit(1)
 		}
@@ -40,20 +58,20 @@ func main() {
 		root = flag.Arg(0)
 	}
 	if check {
-		runScan(root, true)
+		runScan(root, true, lib)
 		return
 	}
 
 	fmt.Printf("scanning %s …\n", root)
-	runScan(root, false)
-	if err := http.ListenAndServe(addr, webui.NewServer(root)); err != nil {
+	runScan(root, false, lib)
+	if err := http.ListenAndServe(addr, webui.NewServer(root, lib)); err != nil {
 		fmt.Fprintln(os.Stderr, "http:", err)
 		os.Exit(1)
 	}
 }
 
-func runOne(dir string) error {
-	a, err := replay.Run(dir)
+func runOne(dir string, lib *techlib.Lib) error {
+	a, err := replay.Run(dir, lib)
 	if err != nil {
 		return err
 	}
@@ -61,7 +79,7 @@ func runOne(dir string) error {
 	return nil
 }
 
-func runScan(root string, strict bool) {
+func runScan(root string, strict bool, lib *techlib.Lib) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "scan:", err)
@@ -77,7 +95,7 @@ func runScan(root string, strict bool) {
 			skipped++
 			continue
 		}
-		if _, err := replay.Run(dir); err != nil {
+		if _, err := replay.Run(dir, lib); err != nil {
 			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", e.Name(), err)
 			failed++
 			continue

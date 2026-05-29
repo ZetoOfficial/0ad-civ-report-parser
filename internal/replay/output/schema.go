@@ -1,6 +1,6 @@
 package output
 
-const SchemaVersion = 5
+const SchemaVersion = 6
 
 type Analysis struct {
 	SchemaVersion int        `json:"schema_version"`
@@ -74,10 +74,32 @@ type Metrics struct {
 }
 
 type PlayerMetrics struct {
-	PhaseTimings map[string]int `json:"phase_timings"` // sec
-	Engagements  []Engagement   `json:"engagements"`
-	Anomalies    []Anomaly      `json:"anomalies"`
-	Sequences    *Sequences     `json:"sequences,omitempty"` // populated from sandbox-regen metadata.json
+	PhaseTimings map[string]int   `json:"phase_timings"` // sec
+	Engagements  []Engagement     `json:"engagements"`
+	Anomalies    []Anomaly        `json:"anomalies"`
+	Sequences    *Sequences       `json:"sequences,omitempty"` // populated from sandbox-regen metadata.json
+	Improvements []ImprovementEntry `json:"improvements"`      // chronological research events resolved via techlib
+}
+
+// ImprovementEntry is a single research event resolved to human-readable metadata.
+type ImprovementEntry struct {
+	TMs          int64           `json:"t_ms"`
+	Template     string          `json:"template"`
+	GenericName  string          `json:"generic_name,omitempty"`
+	Description  string          `json:"description,omitempty"`
+	Building     string          `json:"building,omitempty"`   // primary; first of Buildings, or "" if unknown
+	Buildings    []string        `json:"buildings,omitempty"`  // full list if multiple
+	Cost         ImprovementCost `json:"cost,omitzero"`
+	ResearchTime float64         `json:"research_time,omitempty"`
+	AutoResearch bool            `json:"auto_research,omitempty"`
+}
+
+// ImprovementCost holds the resource cost of a researched technology.
+type ImprovementCost struct {
+	Food  int `json:"food,omitempty"`
+	Wood  int `json:"wood,omitempty"`
+	Stone int `json:"stone,omitempty"`
+	Metal int `json:"metal,omitempty"`
 }
 
 // Sequences is the time-series data StatisticsTracker writes when a replay is

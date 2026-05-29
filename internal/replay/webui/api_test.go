@@ -15,7 +15,7 @@ import (
 
 func TestListReplaysEmptyRoot(t *testing.T) {
 	dir := t.TempDir()
-	srv := NewServer(dir)
+	srv := NewServer(dir, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/replays", nil)
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
@@ -33,7 +33,7 @@ func TestListReplaysEmptyRoot(t *testing.T) {
 
 func TestGetReplayNotFound(t *testing.T) {
 	dir := t.TempDir()
-	srv := NewServer(dir)
+	srv := NewServer(dir, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/replays/DOESNOTEXIST", nil)
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
@@ -69,11 +69,11 @@ func TestGetReplayFound(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	a, err := replay.Run(rdir)
+	a, err := replay.Run(rdir, nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	srv := NewServer(dir)
+	srv := NewServer(dir, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/replays/"+a.Game.MatchID, nil)
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
@@ -94,7 +94,7 @@ func TestGetReplayFound(t *testing.T) {
 
 func TestNonAPIReturns404(t *testing.T) {
 	dir := t.TempDir()
-	srv := NewServer(dir)
+	srv := NewServer(dir, nil)
 	req := httptest.NewRequest(http.MethodGet, "/replay/DOESNOTEXIST", nil)
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)

@@ -15,7 +15,7 @@ func TestRunOnRealFixture(t *testing.T) {
 	}
 	defer os.Remove(filepath.Join(dir, "analysis.json"))
 
-	a, err := Run(dir)
+	a, err := Run(dir, nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestRunOnRealFixture(t *testing.T) {
 func TestRunSkipsMissingMetadata(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "commands.txt"), []byte("start {}\nend\n"), 0o644)
-	_, err := Run(dir)
+	_, err := Run(dir, nil)
 	if err == nil {
 		t.Fatal("Run must error on missing metadata.json")
 	}

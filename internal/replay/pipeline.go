@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -18,11 +19,14 @@ import (
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/metadata"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/output"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/sandbox"
+	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/techlib"
 )
 
 // Run parses replayDir and returns Analysis. It writes analysis.json next to
 // the replay; if analysis.json is newer than commands.txt it is reused.
-func Run(replayDir string) (*output.Analysis, error) {
+// lib may be nil; when nil, research events are still recorded but without
+// human-readable metadata.
+func Run(replayDir string, lib *techlib.Lib) (*output.Analysis, error) {
 	cmdsPath := filepath.Join(replayDir, "commands.txt")
 	metaPath := filepath.Join(replayDir, "metadata.json")
 	outPath := filepath.Join(replayDir, "analysis.json")
@@ -67,7 +71,7 @@ func Run(replayDir string) (*output.Analysis, error) {
 	}
 	game.DurationMs = max(durationMs, meta.TimeElapsed)
 
-	a := buildAnalysis(game, players, meta, evs, filepath.Base(replayDir))
+	a := buildAnalysis(game, players, meta, evs, filepath.Base(replayDir), lib)
 
 	if err := output.Write(outPath, a); err != nil {
 		return nil, fmt.Errorf("replay: write analysis: %w", err)
@@ -197,7 +201,7 @@ func internalEvents(evs []output.Event) []events.Event {
 	return out
 }
 
-func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metadata, evs []output.Event, replayBasename string) *output.Analysis {
+func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metadata, evs []output.Event, replayBasename string, lib *techlib.Lib) *output.Analysis {
 	tev := internalEvents(evs)
 	phaseT := analytics.PhaseTimings(tev)
 	eng := analytics.Engagements(tev, 3000)
@@ -242,6 +246,50 @@ func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metad
 		}
 	}
 
+	// Build per-player improvements from research events.
+	improvsByPlayer := map[int][]output.ImprovementEntry{}
+	for _, e := range tev {
+		if e.Type != events.TypeResearch {
+			continue
+		}
+		data, ok := e.Data.(events.ResearchData)
+		if !ok {
+			continue
+		}
+		entry := output.ImprovementEntry{
+			TMs:      e.TMs,
+			Template: data.Template,
+		}
+		if lib != nil {
+			if info := lib.Resolve(data.Template); info != nil {
+				entry.GenericName = info.GenericName
+				entry.Description = info.Description
+				entry.AutoResearch = info.AutoResearch
+				entry.ResearchTime = info.ResearchTime
+				entry.Cost = output.ImprovementCost{
+					Food:  info.Cost.Food,
+					Wood:  info.Cost.Wood,
+					Stone: info.Cost.Stone,
+					Metal: info.Cost.Metal,
+				}
+				if len(info.Buildings) > 0 {
+					entry.Building = info.Buildings[0]
+					if len(info.Buildings) > 1 {
+						entry.Buildings = info.Buildings
+					}
+				}
+			}
+		}
+		improvsByPlayer[e.Player] = append(improvsByPlayer[e.Player], entry)
+	}
+	// Sort each player's improvements by time ascending (events arrive in order
+	// but explicit sort ensures correctness).
+	for p := range improvsByPlayer {
+		sort.Slice(improvsByPlayer[p], func(i, j int) bool {
+			return improvsByPlayer[p][i].TMs < improvsByPlayer[p][j].TMs
+		})
+	}
+
 	metricsByPlayer := map[int]output.PlayerMetrics{}
 	allPlayers := map[int]struct{}{}
 	for p := range phaseT {
@@ -251,6 +299,9 @@ func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metad
 		allPlayers[p] = struct{}{}
 	}
 	for p := range pg {
+		allPlayers[p] = struct{}{}
+	}
+	for p := range improvsByPlayer {
 		allPlayers[p] = struct{}{}
 	}
 	for p := range allPlayers {
@@ -266,11 +317,16 @@ func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metad
 		if an == nil {
 			an = []output.Anomaly{}
 		}
+		imps := improvsByPlayer[p]
+		if imps == nil {
+			imps = []output.ImprovementEntry{}
+		}
 		metricsByPlayer[p] = output.PlayerMetrics{
 			PhaseTimings: pt,
 			Engagements:  es,
 			Anomalies:    an,
 			Sequences:    seqs[p],
+			Improvements: imps,
 		}
 	}
 	// Also surface players that only appear in sequences (e.g. allies who
@@ -284,6 +340,7 @@ func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metad
 			Engagements:  []output.Engagement{},
 			Anomalies:    []output.Anomaly{},
 			Sequences:    seqs[p],
+			Improvements: []output.ImprovementEntry{},
 		}
 	}
 

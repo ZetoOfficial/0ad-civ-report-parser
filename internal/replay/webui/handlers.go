@@ -13,12 +13,14 @@ import (
 
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/output"
+	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/techlib"
 )
 
 const listCacheTTL = 5 * time.Second
 
 type handlers struct {
 	repRoot string
+	lib     *techlib.Lib
 
 	mu       sync.Mutex
 	cached   []replayListItem
@@ -66,7 +68,7 @@ func (h *handlers) buildList() ([]replayListItem, error) {
 		if _, err := os.Stat(filepath.Join(dir, "metadata.json")); err != nil {
 			continue
 		}
-		a, err := replay.Run(dir)
+		a, err := replay.Run(dir, h.lib)
 		if err != nil {
 			continue
 		}

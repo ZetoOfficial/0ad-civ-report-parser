@@ -9,6 +9,7 @@ import { CombatChart } from "../components/CombatChart";
 import { BroaderChart } from "../components/BroaderChart";
 import { ResourceChart } from "../components/ResourceChart";
 import { BuildingChart } from "../components/BuildingChart";
+import { ImprovementsTimeline } from "../components/ImprovementsTimeline";
 import { formatDuration } from "../utils";
 import { TimeRangeProvider, useTimeRange } from "../timeRange";
 
@@ -115,6 +116,11 @@ export function ReplayPage() {
       <section className="bg-white p-4 rounded-lg border border-gray-200">
         <h2 className="font-semibold mb-2">Здания по типу (выбери в чеклисте)</h2>
         <BuildingChart analysis={a} />
+      </section>
+
+      <section className="bg-white p-4 rounded-lg border border-gray-200">
+        <h2 className="font-semibold mb-2">Улучшения по зданиям</h2>
+        <ImprovementsTimeline analysis={a} />
       </section>
 
       <section className="bg-white p-4 rounded-lg border border-gray-200">

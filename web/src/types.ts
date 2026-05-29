@@ -98,11 +98,31 @@ export interface Sequences {
 
 export type ResourceSeries = Record<string, number[]>;
 
+export interface ImprovementCost {
+  food?: number;
+  wood?: number;
+  stone?: number;
+  metal?: number;
+}
+
+export interface Improvement {
+  t_ms: number;
+  template: string;
+  generic_name?: string;
+  description?: string;
+  building?: string;
+  buildings?: string[];
+  cost?: ImprovementCost;
+  research_time?: number;
+  auto_research?: boolean;
+}
+
 export interface PlayerMetrics {
   phase_timings: Record<string, number>;
   engagements: Engagement[];
   anomalies: Anomaly[];
   sequences?: Sequences | null;
+  improvements?: Improvement[];
 }
 
 export interface Metrics {
