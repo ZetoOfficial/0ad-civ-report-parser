@@ -1,6 +1,6 @@
 package output
 
-const SchemaVersion = 4
+const SchemaVersion = 5
 
 type Analysis struct {
 	SchemaVersion int        `json:"schema_version"`
@@ -117,7 +117,19 @@ type Sequences struct {
 	TreasuresCollected []float64 `json:"treasures_collected"`
 	SuccessfulBribes   []int     `json:"successful_bribes"`
 	FailedBribes       []int     `json:"failed_bribes"`
+
+	// Per-resource time-series. Keys: "food", "wood", "stone", "metal"
+	// (resourcesGathered may also have "vegetarianFood" as a subset of food).
+	// Resources are float64 because 0 A.D. accumulates fractionally.
+	ResourcesCount    ResourceSeries `json:"resources_count"`    // current balance
+	ResourcesGathered ResourceSeries `json:"resources_gathered"` // cumulative gathered
+	ResourcesUsed     ResourceSeries `json:"resources_used"`     // cumulative spent
+	ResourcesBought   ResourceSeries `json:"resources_bought"`   // market buy
+	ResourcesSold     ResourceSeries `json:"resources_sold"`     // market sell
 }
+
+// ResourceSeries: per-resource time-series. Each array len == Sequences.Time len.
+type ResourceSeries map[string][]float64
 
 // ClassSeries: per-class cumulative time-series. Each array len == Sequences.Time len.
 type ClassSeries map[string][]int

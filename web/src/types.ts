@@ -86,7 +86,17 @@ export interface Sequences {
   treasures_collected: number[];
   successful_bribes: number[];
   failed_bribes: number[];
+
+  // Per-resource time-series. Keys: "food", "wood", "stone", "metal"
+  // (resources_gathered may also include "vegetarianFood").
+  resources_count: ResourceSeries;
+  resources_gathered: ResourceSeries;
+  resources_used: ResourceSeries;
+  resources_bought: ResourceSeries;
+  resources_sold: ResourceSeries;
 }
+
+export type ResourceSeries = Record<string, number[]>;
 
 export interface PlayerMetrics {
   phase_timings: Record<string, number>;

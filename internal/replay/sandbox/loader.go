@@ -103,6 +103,12 @@ type rawSequences struct {
 	TreasuresCollected       []float64 `json:"treasuresCollected"`
 	SuccessfulBribes         []int     `json:"successfulBribes"`
 	FailedBribes             []int     `json:"failedBribes"`
+
+	ResourcesCount    map[string][]float64 `json:"resourcesCount"`
+	ResourcesGathered map[string][]float64 `json:"resourcesGathered"`
+	ResourcesUsed     map[string][]float64 `json:"resourcesUsed"`
+	ResourcesBought   map[string][]float64 `json:"resourcesBought"`
+	ResourcesSold     map[string][]float64 `json:"resourcesSold"`
 }
 
 func convert(r *rawSequences) *output.Sequences {
@@ -135,5 +141,10 @@ func convert(r *rawSequences) *output.Sequences {
 		TreasuresCollected:       r.TreasuresCollected,
 		SuccessfulBribes:         r.SuccessfulBribes,
 		FailedBribes:             r.FailedBribes,
+		ResourcesCount:           output.ResourceSeries(r.ResourcesCount),
+		ResourcesGathered:        output.ResourceSeries(r.ResourcesGathered),
+		ResourcesUsed:            output.ResourceSeries(r.ResourcesUsed),
+		ResourcesBought:          output.ResourceSeries(r.ResourcesBought),
+		ResourcesSold:            output.ResourceSeries(r.ResourcesSold),
 	}
 }

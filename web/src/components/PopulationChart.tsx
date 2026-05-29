@@ -1,5 +1,5 @@
 import type { Analysis } from "../types";
-import { Panel, type PlayerSeries } from "./charts";
+import { Panel, phaseMarkers, type PlayerSeries } from "./charts";
 
 const MILITARY = ["Cavalry", "Infantry", "Champion", "Hero", "Siege", "Ship"];
 
@@ -47,12 +47,13 @@ export function PopulationChart({ analysis }: { analysis: Analysis }) {
     Math.ceil(analysis.game.duration_ms / 1000),
     ...pop.flatMap((s) => s.x),
   );
+  const markers = phaseMarkers(analysis);
 
   return (
     <div className="space-y-3">
-      <Panel title="Популяция (всего)" series={pop} xMax={xMax} yLabel="юнитов" />
-      <Panel title="Работяги (живых)" series={workers} xMax={xMax} yLabel="юнитов" />
-      <Panel title="Армия (живых, без работяг)" series={army} xMax={xMax} yLabel="юнитов" />
+      <Panel title="Популяция (всего)" series={pop} xMax={xMax} yLabel="юнитов" markers={markers} />
+      <Panel title="Работяги (живых)" series={workers} xMax={xMax} yLabel="юнитов" markers={markers} />
+      <Panel title="Армия (живых, без работяг)" series={army} xMax={xMax} yLabel="юнитов" markers={markers} />
     </div>
   );
 }

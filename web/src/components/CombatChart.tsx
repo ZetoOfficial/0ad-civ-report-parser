@@ -1,5 +1,5 @@
 import type { Analysis } from "../types";
-import { Panel, type PlayerSeries } from "./charts";
+import { Panel, phaseMarkers, type PlayerSeries } from "./charts";
 
 type Kind = "killed" | "lost" | "net_value";
 
@@ -40,12 +40,13 @@ export function CombatChart({ analysis }: { analysis: Analysis }) {
     ...killed.flatMap((s) => s.x),
     ...lost.flatMap((s) => s.x),
   );
+  const markers = phaseMarkers(analysis);
 
   return (
     <div className="space-y-3">
-      <Panel title="Убил всего (накопительно)" series={killed} xMax={xMax} yLabel="юнитов" />
-      <Panel title="Потерял всего (накопительно)" series={lost} xMax={xMax} yLabel="юнитов" />
-      <Panel title="Чистый обмен по стоимости (убил − потерял)" series={net} xMax={xMax} yLabel="ресурсов" />
+      <Panel title="Убил всего (накопительно)" series={killed} xMax={xMax} yLabel="юнитов" markers={markers} />
+      <Panel title="Потерял всего (накопительно)" series={lost} xMax={xMax} yLabel="юнитов" markers={markers} />
+      <Panel title="Чистый обмен по стоимости (убил − потерял)" series={net} xMax={xMax} yLabel="ресурсов" markers={markers} />
     </div>
   );
 }

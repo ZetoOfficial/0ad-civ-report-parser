@@ -6,7 +6,33 @@ import { PlayerChip } from "../components/PlayerChip";
 import { AnomalyList } from "../components/AnomalyList";
 import { PopulationChart } from "../components/PopulationChart";
 import { CombatChart } from "../components/CombatChart";
+import { BroaderChart } from "../components/BroaderChart";
+import { ResourceChart } from "../components/ResourceChart";
+import { BuildingChart } from "../components/BuildingChart";
 import { formatDuration } from "../utils";
+import { TimeRangeProvider, useTimeRange } from "../timeRange";
+
+function TimeRangeBar() {
+  const { xRange, setXRange } = useTimeRange();
+  if (!xRange) return null;
+  return (
+    <div className="bg-yellow-50 border border-yellow-200 rounded-md p-2 flex items-center justify-between text-sm">
+      <span>
+        Зум: <span className="font-mono">{formatDuration(xRange[0] * 1000)}</span>
+        {" — "}
+        <span className="font-mono">{formatDuration(xRange[1] * 1000)}</span>
+        {" "}<span className="text-gray-500">(синхронизирован на все графики ниже)</span>
+      </span>
+      <button
+        type="button"
+        onClick={() => setXRange(null)}
+        className="px-2 py-1 rounded bg-white border border-gray-300 hover:border-gray-500"
+      >
+        Сбросить зум
+      </button>
+    </div>
+  );
+}
 
 export function ReplayPage() {
   const { matchID = "" } = useParams();
@@ -31,6 +57,7 @@ export function ReplayPage() {
   if (!a) return <p>Loading…</p>;
 
   return (
+    <TimeRangeProvider>
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-bold">{a.game.map}</h1>
@@ -40,6 +67,8 @@ export function ReplayPage() {
           <span>движок: {a.game.engine_version}</span>
         </div>
       </header>
+
+      <TimeRangeBar />
 
       <section className="bg-white p-4 rounded-lg border border-gray-200">
         <h2 className="font-semibold mb-2">Игроки</h2>
@@ -74,9 +103,25 @@ export function ReplayPage() {
       </section>
 
       <section className="bg-white p-4 rounded-lg border border-gray-200">
+        <h2 className="font-semibold mb-2">Ресурсы по типам</h2>
+        <ResourceChart analysis={a} />
+      </section>
+
+      <section className="bg-white p-4 rounded-lg border border-gray-200">
+        <h2 className="font-semibold mb-2">Здания / карта / эко-добавки</h2>
+        <BroaderChart analysis={a} />
+      </section>
+
+      <section className="bg-white p-4 rounded-lg border border-gray-200">
+        <h2 className="font-semibold mb-2">Здания по типу (выбери в чеклисте)</h2>
+        <BuildingChart analysis={a} />
+      </section>
+
+      <section className="bg-white p-4 rounded-lg border border-gray-200">
         <h2 className="font-semibold mb-2">Аномалии</h2>
         <AnomalyList analysis={a} />
       </section>
     </div>
+    </TimeRangeProvider>
   );
 }
