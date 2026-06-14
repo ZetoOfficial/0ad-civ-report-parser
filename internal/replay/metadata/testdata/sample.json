@@ -1,0 +1,20 @@
+{
+  "timeElapsed": 1860400,
+  "playerStates": [
+    {
+      "name": "gaia", "civ": "gaia", "state": "active",
+      "color": {"r": 255, "g": 255, "b": 255},
+      "popCount": 0, "popLimit": 0, "popMax": 0,
+      "resourceCounts": {"food": 0, "wood": 0, "stone": 0, "metal": 0},
+      "phase": "", "team": -1, "researchedTechs": []
+    },
+    {
+      "name": "zeto", "civ": "spart", "state": "defeated",
+      "color": {"r": 10, "g": 10, "b": 190},
+      "popCount": 64, "popLimit": 200, "popMax": 200,
+      "resourceCounts": {"food": 420, "wood": 380, "stone": 12, "metal": 50},
+      "phase": "town", "team": 0,
+      "researchedTechs": ["phase_town_generic", "gather_wicker_baskets"]
+    }
+  ]
+}

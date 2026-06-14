@@ -104,3 +104,56 @@ maur, pers, ptol, rome, sele, spart.
 
 `/Users/zeto/Projects/study/0ad/binaries/data/mods/public` (READ-ONLY).
 Подкаталоги — см. `docs/sources.md`.
+
+## replayreport
+
+Бэк на Go + фронт на React (отдельная папка `web/`). Бинарь `replayreport`
+парсит реплеи, держит REST API на :8080, и отдаёт собранный React-бандл из
+embedded `dist/` на остальные роуты.
+
+### Запуск
+
+```bash
+make replayreport                # build web/ + go → bin/replayreport
+./bin/replayreport               # → http://localhost:8080
+./bin/replayreport <replay-dir>  # парсит один replay (без HTTP)
+./bin/replayreport --check --all # CI: exit 2 если что-то упало
+```
+
+### Разработка (hot-reload)
+
+```bash
+# Терминал 1: бэк
+./bin/replayreport                # порт 8080
+
+# Терминал 2: фронт с HMR
+make web-dev                      # vite на 5173, проксирует /api/* на :8080
+```
+
+Открой `http://localhost:5173/` — изменения в `web/src/` подхватываются мгновенно.
+Изменения в Go перебилди вручную (`make replayreport-fast` если фронт не менялся).
+
+### Структура
+
+- **Backend**: `cmd/replayreport/`, `internal/replay/` — парсер + REST API + SPA-fallback
+- **Frontend**: `web/` — React 18 + TypeScript + Vite + Tailwind + react-plotly.js + react-router
+- **API contract**: `GET /api/replays` (list), `GET /api/replays/{matchID}` (full Analysis)
+- **Embed**: prod-сборка кладёт `web/dist/` в `internal/replay/webui/dist/` и embed-ит через `//go:embed`
+
+Для каждого replay-dir пишется `analysis.json` (schema v1) рядом с
+`commands.txt`. Кэш по mtime: если `analysis.json` свежее `commands.txt` —
+не парсим повторно (старт дашика на 80+ реплеях за секунды).
+
+Replay-dir без `metadata.json` пропускаются (игра упала / не дошла до
+summary screen). В v1 это ожидаемое поведение.
+
+### Что НЕ в v1
+
+Time-series графики population / resources / active gatherers — `metadata.json`
+реальных реплеев не содержит `sequences` (0ad пишет их только при показе
+summary screen, который пользователь обычно скипает). Замена — `Chart 1`
+(плотность команд). См. `docs/superpowers/specs/2026-05-28-replay-analyzer-mvp-design.md`
+и `docs/superpowers/plans/2026-05-28-replay-analyzer-mvp.md` для деталей.
+
+Также вне scope v1: APM/EAPM, кросс-партийная аналитика, real-time mode,
+markdown-отчёт по партии, idle worker detection.

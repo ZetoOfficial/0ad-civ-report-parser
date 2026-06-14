@@ -31,3 +31,17 @@ out/
 # in epic 4 when strict byte-diff is introduced.
 testdata/golden/germans_overview.md
 testdata/golden/germans_structree.md
+
+# Frontend build artifacts and node modules. Backend is API-only and does
+# not embed any HTML/JS/CSS — frontend is served by vite (dev/preview).
+web/node_modules/
+web/dist/
+
+# Pyrogenesis profiler artifacts: dropped into cwd when running
+# `pyrogenesis -replay=` headless. Large (~30 MB), not interesting.
+profile.txt
+profile2.jsonp
+
+# Headless-replay sandbox cache (regenerated metadata.json with
+# sequences). Lives under /tmp by default; defensive in case redirected here.
+tmp/

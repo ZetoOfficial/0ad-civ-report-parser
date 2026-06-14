@@ -10,7 +10,7 @@ GAMEDATA_FLAG := $(if $(GAMEDATA),--gamedata $(GAMEDATA),)
 OUT_DIR_FLAG  := $(if $(OUT_DIR),--out-dir $(OUT_DIR),)
 CONFIG_FLAG   := $(if $(CONFIG),--config $(CONFIG),)
 
-.PHONY: help build all-civs check test clean civ golden-diff $(CIVS)
+.PHONY: help build all-civs check test clean civ golden-diff $(CIVS) replayreport replayreport-fast web-install web-build web-dev replay-check openapi
 
 .DEFAULT_GOAL := help
 
@@ -69,3 +69,44 @@ clean:
 	rm -f *_overview.md *_structree.md common.md
 	rm -f *_buildings_report.md
 	rm -rf $(BIN_DIR)
+
+replayreport:
+	@mkdir -p $(BIN_DIR)
+	$(GO) build -o $(BIN_DIR)/replayreport ./cmd/replayreport
+
+# Kept as alias for older muscle memory.
+.PHONY: replayreport-fast
+replayreport-fast: replayreport
+
+.PHONY: web-install web-build web-preview web-dev
+web-install:
+	cd web && npm install
+
+web-build: web-install
+	cd web && npm run build
+
+# Production-style static serve of the SPA. Pair with a running replayreport
+# backend on :8080 (vite preview proxies /api to it).
+web-preview: web-build
+	cd web && npm run preview
+
+web-dev:
+	cd web && npm run dev
+
+.PHONY: back-run front-run
+back-run: replayreport-fast
+	./$(BIN_DIR)/replayreport
+
+front-run:
+	cd web && npm run dev
+
+replay-check: replayreport
+	./$(BIN_DIR)/replayreport --check --all
+
+# Regenerate Go server stubs and TS types from api/openapi.yaml.
+# Run manually after editing the spec; NOT a dependency of replayreport or replayreport-fast.
+openapi:
+	$(GO) tool oapi-codegen -generate types,std-http -package api \
+		-o internal/api/gen/api.gen.go \
+		api/openapi.yaml
+	cd web && ./node_modules/.bin/openapi-typescript ../api/openapi.yaml -o src/api/gen.ts
