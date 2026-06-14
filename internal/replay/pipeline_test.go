@@ -22,8 +22,8 @@ func TestRunOnRealFixture(t *testing.T) {
 	if a.SchemaVersion != output.SchemaVersion {
 		t.Errorf("SchemaVersion = %d, want %d", a.SchemaVersion, output.SchemaVersion)
 	}
-	if a.Game.MatchID == "" {
-		t.Error("MatchID empty")
+	if a.Game.MatchId == "" {
+		t.Error("MatchId empty")
 	}
 	if len(a.Players) == 0 {
 		t.Error("no players")

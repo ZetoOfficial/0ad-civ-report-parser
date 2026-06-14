@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	api "github.com/ZetoOfficial/0ad-civ-report-parser/internal/api/gen"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay"
-	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/output"
 )
 
 func TestListReplaysEmptyRoot(t *testing.T) {
@@ -74,18 +74,18 @@ func TestGetReplayFound(t *testing.T) {
 		t.Fatalf("Run: %v", err)
 	}
 	srv := NewServer(dir, nil)
-	req := httptest.NewRequest(http.MethodGet, "/api/replays/"+a.Game.MatchID, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/replays/"+a.Game.MatchId, nil)
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d", w.Code)
 	}
-	var got output.Analysis
+	var got api.Analysis
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.Game.MatchID != a.Game.MatchID {
-		t.Errorf("MatchID = %q, want %q", got.Game.MatchID, a.Game.MatchID)
+	if got.Game.MatchId != a.Game.MatchId {
+		t.Errorf("MatchId = %q, want %q", got.Game.MatchId, a.Game.MatchId)
 	}
 	if len(got.Events) == 0 {
 		t.Error("no events in response")

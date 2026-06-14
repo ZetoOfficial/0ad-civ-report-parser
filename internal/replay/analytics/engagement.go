@@ -3,13 +3,13 @@ package analytics
 import (
 	"sort"
 
+	api "github.com/ZetoOfficial/0ad-civ-report-parser/internal/api/gen"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/events"
-	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/output"
 )
 
 // Engagements groups consecutive attack commands on the same target by the same
 // player; a new engagement starts when the gap to the previous attack exceeds windowMs.
-func Engagements(evs []events.Event, windowMs int64) map[int][]output.Engagement {
+func Engagements(evs []events.Event, windowMs int64) map[int][]api.Engagement {
 	type key struct {
 		player int
 		target int
@@ -19,10 +19,10 @@ func Engagements(evs []events.Event, windowMs int64) map[int][]output.Engagement
 		peak, count  int
 	}
 	open := map[key]*cur{}
-	out := map[int][]output.Engagement{}
+	out := map[int][]api.Engagement{}
 
 	flush := func(k key, c *cur) {
-		out[k.player] = append(out[k.player], output.Engagement{
+		out[k.player] = append(out[k.player], api.Engagement{
 			TStartSec:    int(c.tStart / 1000),
 			TEndSec:      int(c.tEnd / 1000),
 			Target:       k.target,

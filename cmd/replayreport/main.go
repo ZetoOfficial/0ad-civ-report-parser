@@ -10,6 +10,7 @@ import (
 
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/paths"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay"
+	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/sandbox"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/techlib"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/webui"
 )
@@ -18,11 +19,12 @@ const defaultReplayDir = "/Users/zeto/Library/Application Support/0ad/replays/0.
 
 func main() {
 	var (
-		all      bool
-		check    bool
-		repDir   string
-		addr     string
-		gamedata string
+		all         bool
+		check       bool
+		repDir      string
+		addr        string
+		gamedata    string
+		sandboxRoot string
 	)
 	flag.BoolVar(&all, "all", false, "process every replay subdir under replay root")
 	flag.BoolVar(&check, "check", false, "validate replays; exit with non-zero on any failure (no http)")
@@ -35,7 +37,15 @@ func main() {
 		gamedataDefault = env
 	}
 	flag.StringVar(&gamedata, "gamedata", gamedataDefault, "path to 0ad mods/public data root")
+
+	flag.StringVar(&sandboxRoot, "sandbox", sandbox.DefaultRoot(),
+		"headless-replay sandbox root (overrides $"+sandbox.EnvRoot+")")
 	flag.Parse()
+
+	// Re-export so sandbox.DefaultRoot() inside the pipeline sees the same value.
+	if err := os.Setenv(sandbox.EnvRoot, sandboxRoot); err != nil {
+		fmt.Fprintln(os.Stderr, "warn: failed to set", sandbox.EnvRoot, ":", err)
+	}
 
 	// Load tech library. A missing/unreadable gamedata root is non-fatal; the
 	// pipeline falls back to recording only the raw template name.
@@ -75,7 +85,7 @@ func runOne(dir string, lib *techlib.Lib) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("OK %s — %s (%s, %d events)\n", a.Game.MatchID, a.Game.Map, dir, len(a.Events))
+	fmt.Printf("OK %s — %s (%s, %d events)\n", a.Game.MatchId, a.Game.Map, dir, len(a.Events))
 	return nil
 }
 

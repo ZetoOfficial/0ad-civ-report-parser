@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	api "github.com/ZetoOfficial/0ad-civ-report-parser/internal/api/gen"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/analytics"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/commands"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/events"
@@ -26,7 +27,7 @@ import (
 // the replay; if analysis.json is newer than commands.txt it is reused.
 // lib may be nil; when nil, research events are still recorded but without
 // human-readable metadata.
-func Run(replayDir string, lib *techlib.Lib) (*output.Analysis, error) {
+func Run(replayDir string, lib *techlib.Lib) (*api.Analysis, error) {
 	cmdsPath := filepath.Join(replayDir, "commands.txt")
 	metaPath := filepath.Join(replayDir, "metadata.json")
 	outPath := filepath.Join(replayDir, "analysis.json")
@@ -35,12 +36,18 @@ func Run(replayDir string, lib *techlib.Lib) (*output.Analysis, error) {
 		return nil, fmt.Errorf("replay: %s: metadata.json missing (skipping)", replayDir)
 	}
 
-	if output.IsFresh(outPath, cmdsPath) {
+	sandboxMeta := sandbox.MetadataPath(sandbox.DefaultRoot(), filepath.Base(replayDir))
+	if output.IsFresh(outPath, cmdsPath, metaPath, sandboxMeta) {
 		raw, err := os.ReadFile(outPath)
 		if err == nil {
-			var a output.Analysis
+			var a api.Analysis
 			if err := json.Unmarshal(raw, &a); err == nil && a.SchemaVersion == output.SchemaVersion {
-				return &a, nil
+				// Cached entry is fresh by mtime, but if it predates the
+				// sequences-from-source-metadata fix it has empty metrics.
+				// Force regen when sequences are missing but metadata has them.
+				if hasAnySequences(&a) || !sourceHasSequences(metaPath) {
+					return &a, nil
+				}
 			}
 		}
 	}
@@ -71,7 +78,7 @@ func Run(replayDir string, lib *techlib.Lib) (*output.Analysis, error) {
 	}
 	game.DurationMs = max(durationMs, meta.TimeElapsed)
 
-	a := buildAnalysis(game, players, meta, evs, filepath.Base(replayDir), lib)
+	a := buildAnalysis(game, players, meta, evs, replayDir, lib)
 
 	if err := output.Write(outPath, a); err != nil {
 		return nil, fmt.Errorf("replay: write analysis: %w", err)
@@ -79,14 +86,14 @@ func Run(replayDir string, lib *techlib.Lib) (*output.Analysis, error) {
 	return a, nil
 }
 
-func parseStart(r io.Reader) (output.GameInfo, []output.Player, error) {
+func parseStart(r io.Reader) (api.GameInfo, []api.Player, error) {
 	rd := commands.New(r)
 	ln, ok, err := rd.Next()
 	if err != nil {
-		return output.GameInfo{}, nil, err
+		return api.GameInfo{}, nil, err
 	}
 	if !ok || ln.Kind != commands.KindStart {
-		return output.GameInfo{}, nil, fmt.Errorf("replay: first line is not 'start'")
+		return api.GameInfo{}, nil, fmt.Errorf("replay: first line is not 'start'")
 	}
 	var s struct {
 		Settings struct {
@@ -112,7 +119,7 @@ func parseStart(r io.Reader) (output.GameInfo, []output.Player, error) {
 		} `json:"mods"`
 	}
 	if err := json.Unmarshal(ln.StartJSON, &s); err != nil {
-		return output.GameInfo{}, nil, fmt.Errorf("replay: parse start: %w", err)
+		return api.GameInfo{}, nil, fmt.Errorf("replay: parse start: %w", err)
 	}
 	matchID := s.MatchID
 	if matchID == "" {
@@ -123,27 +130,30 @@ func parseStart(r io.Reader) (output.GameInfo, []output.Player, error) {
 	if len(s.Mods) > 0 {
 		ev = s.Mods[0].Version
 	}
-	g := output.GameInfo{
-		MatchID:       matchID,
-		Map:           s.Settings.MapName,
-		MapType:       s.MapType,
-		Timestamp:     s.Timestamp,
-		EngineVersion: ev,
-		VictoryConds:  s.Settings.VictoryConditions,
+	g := api.GameInfo{
+		MatchId:           matchID,
+		Map:               s.Settings.MapName,
+		MapType:           s.MapType,
+		Timestamp:         s.Timestamp,
+		EngineVersion:     ev,
+		VictoryConditions: s.Settings.VictoryConditions,
 	}
-	players := make([]output.Player, 0, len(s.Settings.PlayerData))
+	players := make([]api.Player, 0, len(s.Settings.PlayerData))
 	for i, pd := range s.Settings.PlayerData {
 		_, isAI := pd.AI.(string)
 		aiDiff := parseAIDiff(pd.AIDiff)
-		players = append(players, output.Player{
-			ID:     i + 1,
-			Name:   pd.Name,
-			Civ:    pd.Civ,
-			Team:   pd.Team,
-			IsAI:   isAI,
-			AIDiff: aiDiff,
-			Color:  output.Color{R: pd.Color.R, G: pd.Color.G, B: pd.Color.B},
-		})
+		p := api.Player{
+			Id:    i + 1,
+			Name:  pd.Name,
+			Civ:   pd.Civ,
+			Team:  pd.Team,
+			IsAi:  isAI,
+			Color: api.Color{R: pd.Color.R, G: pd.Color.G, B: pd.Color.B},
+		}
+		if aiDiff != 0 {
+			p.AiDiff = &aiDiff
+		}
+		players = append(players, p)
 	}
 	return g, players, nil
 }
@@ -167,9 +177,9 @@ func parseAIDiff(raw json.RawMessage) int {
 	return 0
 }
 
-func streamEvents(r io.Reader) ([]output.Event, int64, error) {
+func streamEvents(r io.Reader) ([]api.Event, int64, error) {
 	rd := commands.New(r)
-	var evs []output.Event
+	var evs []api.Event
 	var tMs int64
 	for {
 		ln, ok, err := rd.Next()
@@ -184,7 +194,7 @@ func streamEvents(r io.Reader) ([]output.Event, int64, error) {
 			tMs += int64(ln.TickMs)
 		case commands.KindCmd:
 			ev := events.Decode(ln.Player, tMs, ln.CmdJSON)
-			evs = append(evs, output.Event{
+			evs = append(evs, api.Event{
 				T: ev.TMs, Player: ev.Player, Type: ev.Type, Data: ev.Data,
 			})
 		}
@@ -193,7 +203,7 @@ func streamEvents(r io.Reader) ([]output.Event, int64, error) {
 }
 
 // internalEvents reconstructs the typed events.Event slice for analytics.
-func internalEvents(evs []output.Event) []events.Event {
+func internalEvents(evs []api.Event) []events.Event {
 	out := make([]events.Event, len(evs))
 	for i, e := range evs {
 		out[i] = events.Event{TMs: e.T, Player: e.Player, Type: e.Type, Data: e.Data}
@@ -201,15 +211,50 @@ func internalEvents(evs []output.Event) []events.Event {
 	return out
 }
 
-func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metadata, evs []output.Event, replayBasename string, lib *techlib.Lib) *output.Analysis {
+// strKey converts an int player ID to the string key used in API maps.
+func strKey(id int) string {
+	return strconv.Itoa(id)
+}
+
+// hasAnySequences reports whether at least one player's metrics carries a
+// non-empty time-series block. Used to detect stale analysis.json files that
+// were written before sequences were wired through.
+func hasAnySequences(a *api.Analysis) bool {
+	for _, pm := range a.Metrics.Players {
+		if pm.Sequences != nil && len(pm.Sequences.Time) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// sourceHasSequences reports whether the user's metadata.json contains a
+// `sequences` key. Cheap substring check — avoids parsing the whole file.
+func sourceHasSequences(metaPath string) bool {
+	raw, err := os.ReadFile(metaPath)
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(raw), `"sequences"`)
+}
+
+func buildAnalysis(g api.GameInfo, players []api.Player, m *metadata.Metadata, evs []api.Event, replayDir string, lib *techlib.Lib) *api.Analysis {
 	tev := internalEvents(evs)
 	phaseT := analytics.PhaseTimings(tev)
 	eng := analytics.Engagements(tev, 3000)
 	pg := analytics.PanicGarrison(tev)
-	// Optional: sequences from headless-replay sandbox. nil if not yet regenerated.
-	seqs, sandboxErr := sandbox.Load(replayBasename)
+	replayBasename := filepath.Base(replayDir)
+	// Sequences come from metadata.json. Try the user's own first (populated
+	// when the summary screen was viewed), then fall back to the sandbox copy
+	// if a headless re-run was done.
+	seqs, sandboxErr := sandbox.LoadFromMeta(filepath.Join(replayDir, "metadata.json"))
+	if (seqs == nil || sandboxErr != nil) {
+		if alt, err := sandbox.Load(replayBasename); err == nil && alt != nil {
+			seqs, sandboxErr = alt, nil
+		}
+	}
 	if sandboxErr != nil {
-		fmt.Fprintf(os.Stderr, "replay: sandbox load %s: %v\n", replayBasename, sandboxErr)
+		fmt.Fprintf(os.Stderr, "replay: sequences load %s: %v\n", replayBasename, sandboxErr)
 	}
 
 	resignByPlayer := map[int]bool{}
@@ -219,7 +264,7 @@ func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metad
 		}
 	}
 
-	finalByPlayer := map[int]output.PlayerFinalState{}
+	finalByPlayer := map[string]api.PlayerFinalState{}
 	for i, ps := range m.PlayerStates {
 		if i == 0 {
 			continue // gaia
@@ -228,13 +273,13 @@ func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metad
 		if resignByPlayer[i] {
 			outcome = "defeated"
 		}
-		rc := output.Resources{
+		rc := api.Resources{
 			Food:  ps.ResourceCounts["food"],
 			Wood:  ps.ResourceCounts["wood"],
 			Stone: ps.ResourceCounts["stone"],
 			Metal: ps.ResourceCounts["metal"],
 		}
-		finalByPlayer[i] = output.PlayerFinalState{
+		finalByPlayer[strKey(i)] = api.PlayerFinalState{
 			Phase:           ps.Phase,
 			State:           ps.State,
 			Outcome:         outcome,
@@ -247,7 +292,7 @@ func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metad
 	}
 
 	// Build per-player improvements from research events.
-	improvsByPlayer := map[int][]output.ImprovementEntry{}
+	improvsByPlayer := map[int][]api.ImprovementEntry{}
 	for _, e := range tev {
 		if e.Type != events.TypeResearch {
 			continue
@@ -256,41 +301,61 @@ func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metad
 		if !ok {
 			continue
 		}
-		entry := output.ImprovementEntry{
+		entry := api.ImprovementEntry{
 			TMs:      e.TMs,
 			Template: data.Template,
 		}
 		if lib != nil {
 			if info := lib.Resolve(data.Template); info != nil {
-				entry.GenericName = info.GenericName
-				entry.Description = info.Description
-				entry.AutoResearch = info.AutoResearch
-				entry.ResearchTime = info.ResearchTime
-				entry.Cost = output.ImprovementCost{
-					Food:  info.Cost.Food,
-					Wood:  info.Cost.Wood,
-					Stone: info.Cost.Stone,
-					Metal: info.Cost.Metal,
+				if info.GenericName != "" {
+					entry.GenericName = &info.GenericName
+				}
+				if info.Description != "" {
+					entry.Description = &info.Description
+				}
+				if info.AutoResearch {
+					b := true
+					entry.AutoResearch = &b
+				}
+				if info.ResearchTime != 0 {
+					entry.ResearchTime = &info.ResearchTime
+				}
+				if info.Cost.Food != 0 || info.Cost.Wood != 0 || info.Cost.Stone != 0 || info.Cost.Metal != 0 {
+					cost := api.ImprovementCost{}
+					if info.Cost.Food != 0 {
+						cost.Food = &info.Cost.Food
+					}
+					if info.Cost.Wood != 0 {
+						cost.Wood = &info.Cost.Wood
+					}
+					if info.Cost.Stone != 0 {
+						cost.Stone = &info.Cost.Stone
+					}
+					if info.Cost.Metal != 0 {
+						cost.Metal = &info.Cost.Metal
+					}
+					entry.Cost = &cost
 				}
 				if len(info.Buildings) > 0 {
-					entry.Building = info.Buildings[0]
+					b0 := info.Buildings[0]
+					entry.Building = &b0
 					if len(info.Buildings) > 1 {
-						entry.Buildings = info.Buildings
+						bs := info.Buildings
+						entry.Buildings = &bs
 					}
 				}
 			}
 		}
 		improvsByPlayer[e.Player] = append(improvsByPlayer[e.Player], entry)
 	}
-	// Sort each player's improvements by time ascending (events arrive in order
-	// but explicit sort ensures correctness).
+	// Sort each player's improvements by time ascending.
 	for p := range improvsByPlayer {
 		sort.Slice(improvsByPlayer[p], func(i, j int) bool {
 			return improvsByPlayer[p][i].TMs < improvsByPlayer[p][j].TMs
 		})
 	}
 
-	metricsByPlayer := map[int]output.PlayerMetrics{}
+	metricsByPlayer := map[string]api.PlayerMetrics{}
 	allPlayers := map[int]struct{}{}
 	for p := range phaseT {
 		allPlayers[p] = struct{}{}
@@ -311,17 +376,17 @@ func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metad
 		}
 		es := eng[p]
 		if es == nil {
-			es = []output.Engagement{}
+			es = []api.Engagement{}
 		}
 		an := pg[p]
 		if an == nil {
-			an = []output.Anomaly{}
+			an = []api.Anomaly{}
 		}
 		imps := improvsByPlayer[p]
 		if imps == nil {
-			imps = []output.ImprovementEntry{}
+			imps = []api.ImprovementEntry{}
 		}
-		metricsByPlayer[p] = output.PlayerMetrics{
+		metricsByPlayer[strKey(p)] = api.PlayerMetrics{
 			PhaseTimings: pt,
 			Engagements:  es,
 			Anomalies:    an,
@@ -332,26 +397,27 @@ func buildAnalysis(g output.GameInfo, players []output.Player, m *metadata.Metad
 	// Also surface players that only appear in sequences (e.g. allies who
 	// issued no commands but show up in metadata.json).
 	for p := range seqs {
-		if _, ok := metricsByPlayer[p]; ok {
+		k := strKey(p)
+		if _, ok := metricsByPlayer[k]; ok {
 			continue
 		}
-		metricsByPlayer[p] = output.PlayerMetrics{
+		metricsByPlayer[k] = api.PlayerMetrics{
 			PhaseTimings: map[string]int{},
-			Engagements:  []output.Engagement{},
-			Anomalies:    []output.Anomaly{},
+			Engagements:  []api.Engagement{},
+			Anomalies:    []api.Anomaly{},
 			Sequences:    seqs[p],
-			Improvements: []output.ImprovementEntry{},
+			Improvements: []api.ImprovementEntry{},
 		}
 	}
 
-	return &output.Analysis{
+	return &api.Analysis{
 		SchemaVersion: output.SchemaVersion,
 		Game:          g,
 		Players:       players,
 		Events:        evs,
-		Snapshots:     []output.Snapshot{},
-		FinalState:    output.FinalState{Players: finalByPlayer},
-		Metrics:       output.Metrics{Players: metricsByPlayer},
+		Snapshots:     []api.Snapshot{},
+		FinalState:    api.FinalState{Players: finalByPlayer},
+		Metrics:       api.Metrics{Players: metricsByPlayer},
 	}
 }
 

@@ -7,11 +7,11 @@ import (
 
 func TestLoadFromRealSandbox(t *testing.T) {
 	// Skip if the sandbox isn't populated (e.g. fresh checkout, no headless
-	// regen run yet).
-	const root = "/tmp/0ad-replay-sandbox"
+	// regen run yet). Honors $OAD_REPLAY_SANDBOX so devs can point at any root.
+	root := DefaultRoot()
 	const sample = "2026-05-28_0001"
-	if _, err := os.Stat(root + "/replays/0.28.0/" + sample + "/metadata.json"); err != nil {
-		t.Skipf("sandbox sample missing: %v", err)
+	if _, err := os.Stat(MetadataPath(root, sample)); err != nil {
+		t.Skipf("sandbox sample missing at %s: %v", root, err)
 	}
 
 	seqs, err := LoadFromRoot(root, sample)

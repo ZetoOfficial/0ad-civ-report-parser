@@ -1,3 +1,5 @@
+// Package output provides atomic JSON writing and mtime-freshness check for
+// analysis files. Types are defined in internal/api/gen.
 package output
 
 import (
@@ -5,10 +7,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	api "github.com/ZetoOfficial/0ad-civ-report-parser/internal/api/gen"
 )
 
+const SchemaVersion = 6
+
 // Write atomically marshals a as JSON to path (temp file + rename).
-func Write(path string, a *Analysis) error {
+func Write(path string, a *api.Analysis) error {
 	raw, err := json.MarshalIndent(a, "", "  ")
 	if err != nil {
 		return fmt.Errorf("output: marshal: %w", err)
@@ -31,15 +37,23 @@ func Write(path string, a *Analysis) error {
 	return nil
 }
 
-// IsFresh reports whether path exists and is newer than the source (commandsTxt).
-func IsFresh(path, commandsTxt string) bool {
+// IsFresh reports whether path exists and is newer than every source provided.
+// Missing sources are ignored (treated as "no constraint"); a missing path is
+// treated as not-fresh.
+func IsFresh(path string, sources ...string) bool {
 	a, err := os.Stat(path)
 	if err != nil {
 		return false
 	}
-	b, err := os.Stat(commandsTxt)
-	if err != nil {
-		return false
+	aTime := a.ModTime()
+	for _, src := range sources {
+		b, err := os.Stat(src)
+		if err != nil {
+			continue
+		}
+		if b.ModTime().After(aTime) {
+			return false
+		}
 	}
-	return a.ModTime().After(b.ModTime())
+	return true
 }

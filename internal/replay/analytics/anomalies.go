@@ -3,12 +3,12 @@ package analytics
 import (
 	"sort"
 
+	api "github.com/ZetoOfficial/0ad-civ-report-parser/internal/api/gen"
 	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/events"
-	"github.com/ZetoOfficial/0ad-civ-report-parser/internal/replay/output"
 )
 
 // PanicGarrison flags ≥5 garrison commands into the same building within < 3 sec.
-func PanicGarrison(evs []events.Event) map[int][]output.Anomaly {
+func PanicGarrison(evs []events.Event) map[int][]api.Anomaly {
 	type key struct {
 		player int
 		target int
@@ -17,7 +17,7 @@ func PanicGarrison(evs []events.Event) map[int][]output.Anomaly {
 		ts []int64
 	}
 	seen := map[key]*win{}
-	out := map[int][]output.Anomaly{}
+	out := map[int][]api.Anomaly{}
 	sorted := append([]events.Event{}, evs...)
 	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].TMs < sorted[j].TMs })
 
@@ -46,15 +46,16 @@ func PanicGarrison(evs []events.Event) map[int][]output.Anomaly {
 		}
 		w.ts = w.ts[cut:]
 		if len(w.ts) >= threshold {
-			out[e.Player] = append(out[e.Player], output.Anomaly{
+			details := map[string]any{
+				"target": d.Target,
+				"count":  len(w.ts),
+			}
+			out[e.Player] = append(out[e.Player], api.Anomaly{
 				Type:      "panic_garrison",
 				TStartSec: int(w.ts[0] / 1000),
 				TEndSec:   int(w.ts[len(w.ts)-1] / 1000),
 				Severity:  "warning",
-				Details: map[string]any{
-					"target": d.Target,
-					"count":  len(w.ts),
-				},
+				Details:   &details,
 			})
 			w.ts = w.ts[:0] // reset so we don't double-fire
 		}

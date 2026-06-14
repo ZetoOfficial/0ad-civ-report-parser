@@ -1,0 +1,483 @@
+openapi: 3.0.3
+info:
+  title: "0 A.D. Replay Analyzer API"
+  version: "6"
+
+paths:
+  /api/replays:
+    get:
+      operationId: GetApiReplays
+      summary: List replays
+      responses:
+        "200":
+          description: Array of replay summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReplaySummary"
+
+  /api/replays/{matchID}:
+    get:
+      operationId: GetApiReplaysByMatchID
+      summary: Get full analysis for a replay
+      parameters:
+        - name: matchID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Full analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Analysis"
+        "404":
+          description: Replay not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    Color:
+      type: object
+      required: [r, g, b]
+      properties:
+        r:
+          type: integer
+        g:
+          type: integer
+        b:
+          type: integer
+
+    Player:
+      type: object
+      required: [id, name, civ, team, is_ai, color]
+      properties:
+        id:
+          type: integer
+          description: "1-based player ID; matches cmd <P>"
+        name:
+          type: string
+        civ:
+          type: string
+        team:
+          type: integer
+        is_ai:
+          type: boolean
+        ai_diff:
+          type: integer
+        color:
+          $ref: "#/components/schemas/Color"
+
+    ReplaySummary:
+      type: object
+      required: [match_id, map, timestamp, duration_ms, players, outcome]
+      properties:
+        match_id:
+          type: string
+        map:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+        duration_ms:
+          type: integer
+          format: int64
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/Player"
+        outcome:
+          type: string
+
+    GameInfo:
+      type: object
+      required: [match_id, map, map_type, timestamp, duration_ms, engine_version, victory_conditions]
+      properties:
+        match_id:
+          type: string
+        map:
+          type: string
+        map_type:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+          description: "Unix seconds"
+        duration_ms:
+          type: integer
+          format: int64
+        engine_version:
+          type: string
+        victory_conditions:
+          type: array
+          items:
+            type: string
+
+    Event:
+      type: object
+      required: [t, player, type]
+      properties:
+        t:
+          type: integer
+          format: int64
+          description: "Milliseconds from game start"
+        player:
+          type: integer
+          description: "1-based player ID"
+        type:
+          type: string
+        data: {}
+
+    Snapshot:
+      type: object
+
+    Resources:
+      type: object
+      required: [food, wood, stone, metal]
+      properties:
+        food:
+          type: integer
+        wood:
+          type: integer
+        stone:
+          type: integer
+        metal:
+          type: integer
+
+    PlayerFinalState:
+      type: object
+      required: [phase, state, outcome, pop_count, pop_limit, pop_max, resource_counts, researched_techs]
+      properties:
+        phase:
+          type: string
+        state:
+          type: string
+          description: "active | won | defeated"
+        outcome:
+          type: string
+          description: "Resolved outcome; resign event takes precedence"
+        pop_count:
+          type: integer
+        pop_limit:
+          type: integer
+        pop_max:
+          type: integer
+        resource_counts:
+          $ref: "#/components/schemas/Resources"
+        researched_techs:
+          type: array
+          items:
+            type: string
+
+    FinalState:
+      type: object
+      required: [players]
+      properties:
+        players:
+          type: object
+          description: "Keyed by player ID as string"
+          additionalProperties:
+            $ref: "#/components/schemas/PlayerFinalState"
+
+    Engagement:
+      type: object
+      required: [t_start_sec, t_end_sec, target, peak_units, command_count]
+      properties:
+        t_start_sec:
+          type: integer
+        t_end_sec:
+          type: integer
+        target:
+          type: integer
+        peak_units:
+          type: integer
+        command_count:
+          type: integer
+
+    Anomaly:
+      type: object
+      required: [type, t_start_sec, t_end_sec, severity]
+      properties:
+        type:
+          type: string
+        t_start_sec:
+          type: integer
+        t_end_sec:
+          type: integer
+        severity:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    ClassSeriesMap:
+      type: object
+      description: "Per-class cumulative time-series. Each array aligns to Sequences.time."
+      additionalProperties:
+        type: array
+        items:
+          type: integer
+
+    ResourceSeriesMap:
+      type: object
+      description: "Per-resource time-series. Keys: food, wood, stone, metal (and possibly vegetarianFood)."
+      additionalProperties:
+        type: array
+        items:
+          type: number
+          format: double
+
+    Sequences:
+      type: object
+      required:
+        - time
+        - population_count
+        - percent_map_explored
+        - percent_map_controlled
+        - units_trained
+        - units_lost
+        - enemy_units_killed
+        - units_captured
+        - buildings_constructed
+        - buildings_lost
+        - enemy_buildings_destroyed
+        - buildings_captured
+        - units_lost_value
+        - enemy_units_killed_value
+        - units_captured_value
+        - buildings_lost_value
+        - enemy_buildings_destroyed_value
+        - buildings_captured_value
+        - trade_income
+        - tributes_sent
+        - tributes_received
+        - loot_collected
+        - treasures_collected
+        - successful_bribes
+        - failed_bribes
+        - resources_count
+        - resources_gathered
+        - resources_used
+        - resources_bought
+        - resources_sold
+      properties:
+        time:
+          type: array
+          items:
+            type: number
+            format: double
+          description: "X-axis, seconds from game start (~30s sampling)"
+        population_count:
+          type: array
+          items:
+            type: integer
+        percent_map_explored:
+          type: array
+          items:
+            type: integer
+        percent_map_controlled:
+          type: array
+          items:
+            type: integer
+        units_trained:
+          $ref: "#/components/schemas/ClassSeriesMap"
+        units_lost:
+          $ref: "#/components/schemas/ClassSeriesMap"
+        enemy_units_killed:
+          $ref: "#/components/schemas/ClassSeriesMap"
+        units_captured:
+          $ref: "#/components/schemas/ClassSeriesMap"
+        buildings_constructed:
+          $ref: "#/components/schemas/ClassSeriesMap"
+        buildings_lost:
+          $ref: "#/components/schemas/ClassSeriesMap"
+        enemy_buildings_destroyed:
+          $ref: "#/components/schemas/ClassSeriesMap"
+        buildings_captured:
+          $ref: "#/components/schemas/ClassSeriesMap"
+        units_lost_value:
+          type: array
+          items:
+            type: number
+            format: double
+        enemy_units_killed_value:
+          type: array
+          items:
+            type: number
+            format: double
+        units_captured_value:
+          type: array
+          items:
+            type: number
+            format: double
+        buildings_lost_value:
+          type: array
+          items:
+            type: number
+            format: double
+        enemy_buildings_destroyed_value:
+          type: array
+          items:
+            type: number
+            format: double
+        buildings_captured_value:
+          type: array
+          items:
+            type: number
+            format: double
+        trade_income:
+          type: array
+          items:
+            type: number
+            format: double
+        tributes_sent:
+          type: array
+          items:
+            type: number
+            format: double
+        tributes_received:
+          type: array
+          items:
+            type: number
+            format: double
+        loot_collected:
+          type: array
+          items:
+            type: number
+            format: double
+        treasures_collected:
+          type: array
+          items:
+            type: number
+            format: double
+        successful_bribes:
+          type: array
+          items:
+            type: integer
+        failed_bribes:
+          type: array
+          items:
+            type: integer
+        resources_count:
+          $ref: "#/components/schemas/ResourceSeriesMap"
+        resources_gathered:
+          $ref: "#/components/schemas/ResourceSeriesMap"
+        resources_used:
+          $ref: "#/components/schemas/ResourceSeriesMap"
+        resources_bought:
+          $ref: "#/components/schemas/ResourceSeriesMap"
+        resources_sold:
+          $ref: "#/components/schemas/ResourceSeriesMap"
+
+    ImprovementCost:
+      type: object
+      properties:
+        food:
+          type: integer
+        wood:
+          type: integer
+        stone:
+          type: integer
+        metal:
+          type: integer
+
+    ImprovementEntry:
+      type: object
+      required: [t_ms, template]
+      properties:
+        t_ms:
+          type: integer
+          format: int64
+        template:
+          type: string
+        generic_name:
+          type: string
+        description:
+          type: string
+        building:
+          type: string
+        buildings:
+          type: array
+          items:
+            type: string
+        cost:
+          $ref: "#/components/schemas/ImprovementCost"
+        research_time:
+          type: number
+          format: double
+        auto_research:
+          type: boolean
+
+    PlayerMetrics:
+      type: object
+      required: [phase_timings, engagements, anomalies, improvements]
+      properties:
+        phase_timings:
+          type: object
+          description: "Phase name to seconds when it was reached"
+          additionalProperties:
+            type: integer
+        engagements:
+          type: array
+          items:
+            $ref: "#/components/schemas/Engagement"
+        anomalies:
+          type: array
+          items:
+            $ref: "#/components/schemas/Anomaly"
+        sequences:
+          $ref: "#/components/schemas/Sequences"
+        improvements:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImprovementEntry"
+
+    Metrics:
+      type: object
+      required: [players]
+      properties:
+        players:
+          type: object
+          description: "Keyed by player ID as string"
+          additionalProperties:
+            $ref: "#/components/schemas/PlayerMetrics"
+
+    Analysis:
+      type: object
+      required: [schema_version, game, players, events, snapshots, final_state, metrics]
+      properties:
+        schema_version:
+          type: integer
+        game:
+          $ref: "#/components/schemas/GameInfo"
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/Player"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/Event"
+        snapshots:
+          type: array
+          items:
+            $ref: "#/components/schemas/Snapshot"
+        final_state:
+          $ref: "#/components/schemas/FinalState"
+        metrics:
+          $ref: "#/components/schemas/Metrics"

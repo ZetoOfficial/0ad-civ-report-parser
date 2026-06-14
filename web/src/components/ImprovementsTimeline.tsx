@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import type { Analysis, Improvement } from "../types";
 import { PlayerChip } from "./PlayerChip";
 import { formatDuration } from "../utils";
@@ -46,12 +45,6 @@ function groupByBuilding(improvements: Improvement[]): BuildingGroup[] {
 }
 
 export function ImprovementsTimeline({ analysis }: Props) {
-  const playerByID = useMemo(() => {
-    const m: Record<number, Analysis["players"][number]> = {};
-    for (const p of analysis.players) m[p.id] = p;
-    return m;
-  }, [analysis]);
-
   return (
     <div className="space-y-6">
       {analysis.players.map((player) => {

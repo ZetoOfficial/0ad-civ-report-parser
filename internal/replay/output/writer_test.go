@@ -6,17 +6,19 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	api "github.com/ZetoOfficial/0ad-civ-report-parser/internal/api/gen"
 )
 
 func TestWriteRoundtrip(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "analysis.json")
-	in := &Analysis{
+	in := &api.Analysis{
 		SchemaVersion: SchemaVersion,
-		Game:          GameInfo{MatchID: "ABC", Map: "punjab_2", DurationMs: 1860400},
-		Players:       []Player{{ID: 1, Name: "zeto", Civ: "spart"}},
-		Events:        []Event{{T: 1200, Player: 1, Type: "train"}},
-		Snapshots:     []Snapshot{},
+		Game:          api.GameInfo{MatchId: "ABC", Map: "punjab_2", DurationMs: 1860400},
+		Players:       []api.Player{{Id: 1, Name: "zeto", Civ: "spart"}},
+		Events:        []api.Event{{T: 1200, Player: 1, Type: "train"}},
+		Snapshots:     []api.Snapshot{},
 	}
 	if err := Write(path, in); err != nil {
 		t.Fatalf("Write: %v", err)
@@ -25,15 +27,15 @@ func TestWriteRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var got Analysis
+	var got api.Analysis
 	if err := json.Unmarshal(raw, &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	if got.SchemaVersion != SchemaVersion {
 		t.Errorf("SchemaVersion = %d, want %d", got.SchemaVersion, SchemaVersion)
 	}
-	if got.Game.MatchID != "ABC" {
-		t.Errorf("MatchID = %q, want ABC", got.Game.MatchID)
+	if got.Game.MatchId != "ABC" {
+		t.Errorf("MatchId = %q, want ABC", got.Game.MatchId)
 	}
 	if len(got.Players) != 1 || got.Players[0].Civ != "spart" {
 		t.Errorf("Players = %+v", got.Players)

@@ -10,7 +10,7 @@ GAMEDATA_FLAG := $(if $(GAMEDATA),--gamedata $(GAMEDATA),)
 OUT_DIR_FLAG  := $(if $(OUT_DIR),--out-dir $(OUT_DIR),)
 CONFIG_FLAG   := $(if $(CONFIG),--config $(CONFIG),)
 
-.PHONY: help build all-civs check test clean civ golden-diff $(CIVS) replayreport replayreport-fast web-install web-build web-dev replay-check
+.PHONY: help build all-civs check test clean civ golden-diff $(CIVS) replayreport replayreport-fast web-install web-build web-dev replay-check openapi
 
 .DEFAULT_GOAL := help
 
@@ -102,3 +102,11 @@ front-run:
 
 replay-check: replayreport
 	./$(BIN_DIR)/replayreport --check --all
+
+# Regenerate Go server stubs and TS types from api/openapi.yaml.
+# Run manually after editing the spec; NOT a dependency of replayreport or replayreport-fast.
+openapi:
+	$(GO) tool oapi-codegen -generate types,std-http -package api \
+		-o internal/api/gen/api.gen.go \
+		api/openapi.yaml
+	cd web && ./node_modules/.bin/openapi-typescript ../api/openapi.yaml -o src/api/gen.ts
